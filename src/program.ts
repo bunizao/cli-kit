@@ -6,7 +6,7 @@ const VERB_SET = new Set<string>(VERBS);
 const mutations = new WeakSet<Command>();
 const ACTION_GROUPS = new Set(["auth", "skills"]);
 const ACTIONS: Readonly<Record<string, ReadonlySet<string>>> = {
-  auth: new Set(["login", "status", "logout", "keepalive"]),
+  auth: new Set(["install", "login", "status", "logout", "keepalive"]),
   skills: new Set(["generate", "add"]),
 };
 
