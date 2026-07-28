@@ -1,0 +1,7 @@
+{
+  "tools": [
+    { "package": "ontrack", "binary": "ontrack", "authFailure": null, "mutation": null, "read": null },
+    { "package": "moodle-cli", "binary": "moodle", "authFailure": null, "mutation": null, "read": null },
+    { "package": "edstem-cli", "binary": "edstem", "authFailure": null, "mutation": null, "read": null }
+  ]
+}

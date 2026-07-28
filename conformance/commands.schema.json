@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bunizao/cli-kit/conformance/commands.schema.json",
+  "title": "Bunizao CLI command description",
+  "type": "object",
+  "required": ["name", "version", "description", "commands"],
+  "properties": {
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "description": { "type": "string" },
+    "commands": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/command" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "argument": {
+      "type": "object",
+      "required": ["name", "description", "required", "variadic"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "required": { "type": "boolean" },
+        "variadic": { "type": "boolean" },
+        "enumValues": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "option": {
+      "type": "object",
+      "required": ["flags", "description", "required", "variadic"],
+      "properties": {
+        "flags": { "type": "string" },
+        "description": { "type": "string" },
+        "required": { "type": "boolean" },
+        "variadic": { "type": "boolean" },
+        "enumValues": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": ["name", "noun", "aliases", "description", "positionals", "options", "mutating", "commands"],
+      "properties": {
+        "name": { "type": "string" },
+        "noun": { "type": "string" },
+        "verb": {
+          "enum": ["list", "show", "read", "get", "search", "send", "submit", "set", "mark-read"]
+        },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string" },
+        "positionals": { "type": "array", "items": { "$ref": "#/$defs/argument" } },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/option" } },
+        "mutating": { "type": "boolean" },
+        "commands": { "type": "array", "items": { "$ref": "#/$defs/command" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}
