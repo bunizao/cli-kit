@@ -5,6 +5,10 @@ export const VERBS = ["list", "show", "read", "get", "search", "send", "submit",
 const VERB_SET = new Set<string>(VERBS);
 const mutations = new WeakSet<Command>();
 const ACTION_GROUPS = new Set(["auth", "skills"]);
+const ACTIONS: Readonly<Record<string, ReadonlySet<string>>> = {
+  auth: new Set(["login", "status", "logout", "keepalive"]),
+  skills: new Set(["generate", "add"]),
+};
 
 export interface CommandDescription {
   readonly name: string;
@@ -80,6 +84,9 @@ export function commandsJson(program: Command): ProgramDescription {
 function describe(command: Command, noun?: string): CommandDescription {
   const currentNoun = noun ?? command.name();
   const verb = noun && !ACTION_GROUPS.has(noun) ? command.name() : undefined;
+  if (noun && ACTION_GROUPS.has(noun) && !ACTIONS[noun]?.has(command.name())) {
+    throw new Error(`Unsupported action "${command.name()}" on group "${noun}".`);
+  }
   if (verb && !VERB_SET.has(verb)) {
     throw new Error(`Unsupported verb "${verb}" on noun "${noun}".`);
   }

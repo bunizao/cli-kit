@@ -69,6 +69,13 @@ test("commandsJson rejects a verb outside the contract", () => {
   assert.throws(() => commandsJson(program), /Unsupported verb "destroy"/);
 });
 
+test("commandsJson rejects an unknown action in an exceptional group", () => {
+  const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
+  program.command("auth").command("bananas");
+
+  assert.throws(() => commandsJson(program), /Unsupported action "bananas" on group "auth"/);
+});
+
 test("help and version throw a zero-exit signal under exitOverride", async () => {
   for (const args of [["--help"], ["-h"], ["-V"]]) {
     const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
