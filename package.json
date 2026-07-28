@@ -1,0 +1,43 @@
+{
+  "name": "@bunizao/cli-kit",
+  "version": "0.1.0",
+  "description": "Shared command-line contract for Bunizao CLI tools",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test",
+    "test:conformance": "npm --prefix conformance test",
+    "prepack": "npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bunizao/cli-kit.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
