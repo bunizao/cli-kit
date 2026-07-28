@@ -7,7 +7,7 @@ confirmation, and command self-description.
 ## Install
 
 ```sh
-npm install github:bunizao/cli-kit commander
+npm install https://codeload.github.com/bunizao/cli-kit/tar.gz/refs/tags/v0.1.0 commander
 ```
 
 After the registry release, consumers can switch to the versioned package:
