@@ -68,3 +68,23 @@ test("commandsJson rejects a verb outside the contract", () => {
 
   assert.throws(() => commandsJson(program), /Unsupported verb "destroy"/);
 });
+
+test("help and version throw a zero-exit signal under exitOverride", async () => {
+  for (const args of [["--help"], ["-h"], ["-V"]]) {
+    const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
+    program.configureOutput({ writeOut: () => undefined });
+    await assert.rejects(program.parseAsync(args, { from: "user" }), (error) => {
+      assert.equal(error.exitCode, 0);
+      return true;
+    });
+  }
+});
+
+test("commander usage failures still throw once", async () => {
+  const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
+  await assert.rejects(program.parseAsync(["bogus"], { from: "user" }), (error) => {
+    assert.match(error.code, /^commander\./);
+    assert.equal(error.exitCode, 1);
+    return true;
+  });
+});

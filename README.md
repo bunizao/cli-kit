@@ -79,15 +79,18 @@ const format = resolveFormat(program.opts(), process.stdout.isTTY === true);
 try {
   await program.parseAsync(args, { from: "user" });
 } catch (error) {
-  const reported = reportError(error, format);
-  process.stderr.write(reported.text);
-  process.exitCode = reported.exitCode;
+  const isNormalExit = typeof error === "object" && error && "exitCode" in error && error.exitCode === 0;
+  if (!isNormalExit) {
+    const reported = reportError(error, format);
+    process.stderr.write(reported.text);
+    process.exitCode = reported.exitCode;
+  }
 }
 ```
 
 Commander error text is suppressed by `createProgram`, so the shared reporter is the only error
-renderer. Help and version requests throw Commander's zero-exit signal because `exitOverride` is
-enabled; consumers should preserve its zero status.
+renderer. Help and version requests render normally, then throw Commander's zero-exit signal;
+preserve that status without reporting it. Usage failures throw for the boundary to report once.
 
 ## Mutations
 
