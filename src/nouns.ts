@@ -3,6 +3,8 @@ export interface NounSpec {
   readonly aliases?: readonly string[];
   readonly verbs: readonly string[];
   readonly defaultByArity: Readonly<Record<number, string>>;
+  /** Option flags whose following token is a value, not a positional argument. */
+  readonly valueFlags?: readonly string[];
 }
 
 const GLOBAL_VALUE_FLAGS = new Set(["--fields", "-o", "--output"]);
@@ -20,7 +22,7 @@ export function insertDefaultVerb(argv: readonly string[], nouns: readonly NounS
   if (next && spec.verbs.includes(next)) return result;
   if (result.includes("--help") || result.includes("-h")) return result;
 
-  const arity = countPositionals(result.slice(nounIndex + 1));
+  const arity = countPositionals(result.slice(nounIndex + 1), spec.valueFlags ?? []);
   const verb = spec.defaultByArity[arity];
   if (!verb) return result;
   result.splice(nounIndex + 1, 0, verb);
@@ -42,7 +44,8 @@ function findNounIndex(argv: readonly string[], nouns: readonly NounSpec[]): num
   return -1;
 }
 
-function countPositionals(argv: readonly string[]): number {
+function countPositionals(argv: readonly string[], valueFlags: readonly string[]): number {
+  const flagsWithValues = new Set([...GLOBAL_VALUE_FLAGS, ...valueFlags]);
   let count = 0;
   let terminated = false;
   for (let index = 0; index < argv.length; index += 1) {
@@ -51,7 +54,7 @@ function countPositionals(argv: readonly string[]): number {
       terminated = true;
       continue;
     }
-    if (!terminated && token && GLOBAL_VALUE_FLAGS.has(token)) {
+    if (!terminated && token && flagsWithValues.has(token)) {
       index += 1;
       continue;
     }

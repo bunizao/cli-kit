@@ -14,6 +14,7 @@ const nouns = [
     name: "tasks",
     verbs: ["list", "show", "read"],
     defaultByArity: { 1: "list", 2: "show" },
+    valueFlags: ["--status"],
   },
 ];
 
@@ -25,6 +26,7 @@ const cases = [
   ["long help", ["courses", "--help"], ["units", "--help"]],
   ["short help", ["projects", "-h"], ["units", "-h"]],
   ["interleaved flags", ["tasks", "FIT1045", "--json"], ["tasks", "list", "FIT1045", "--json"]],
+  ["command option value", ["tasks", "FIT1045", "--status", "rediscuss"], ["tasks", "list", "FIT1045", "--status", "rediscuss"]],
   ["unknown arity", ["units", "FIT1045", "extra"], ["units", "FIT1045", "extra"]],
   ["terminator", ["tasks", "FIT1045", "--", "-1"], ["tasks", "show", "FIT1045", "--", "-1"]],
   ["global flag before noun", ["--json", "units"], ["--json", "units", "list"]],
