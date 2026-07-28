@@ -19,6 +19,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test test/*.test.js",
     "test:conformance": "npm --prefix conformance test",
+    "prepare": "npm run build",
     "prepack": "npm test"
   },
   "engines": {

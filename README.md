@@ -7,17 +7,13 @@ confirmation, and command self-description.
 ## Install
 
 ```sh
-npm install @bunizao/cli-kit commander
+npm install github:bunizao/cli-kit commander
 ```
 
-Before the first registry release, sibling repositories can use:
+After the registry release, consumers can switch to the versioned package:
 
-```json
-{
-  "dependencies": {
-    "@bunizao/cli-kit": "file:../cli-kit"
-  }
-}
+```sh
+npm install @bunizao/cli-kit commander
 ```
 
 Node.js 18 or newer is supported. Individual CLIs may require a newer runtime.
@@ -118,14 +114,6 @@ commands at noun depth must use a verb exported in `VERBS`; unsupported verbs th
 
 The exit-code table, error vocabulary, and verb set are public versioned API. Changing one requires
 a major package release.
-
-## Development
-
-```sh
-npm test
-npm run test:conformance
-npm pack --dry-run
-```
 
 The conformance suite is isolated under `conformance/`. Until all three CLIs have published their
 normalized releases, missing binaries are reported as skipped tests. Its CI workflow installs the
