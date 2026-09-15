@@ -60,7 +60,6 @@ export function createProgram(meta: { name: string; version: string; description
     .option("--table", "Emit a human-readable table")
     .option("--fields <fields>", "Select top-level fields")
     .option("-o, --output <file>", "Write output to a file")
-    .option("-q, --quiet", "Suppress non-essential diagnostics")
     .option("--verbose", "Enable debug logging")
     .option("--no-color", "Disable color output")
     .option("-y, --yes", "Confirm mutations non-interactively")
