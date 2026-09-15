@@ -72,3 +72,9 @@ test("a table flattens nested values instead of printing JSON in a cell", () => 
 test("render emits compact JSON when the caller is not a terminal", () => {
   assert.equal(render([{ id: 1 }], { format: "json", pretty: false }), '[{"id":1}]\n');
 });
+
+test("a column key may reach into a nested object", () => {
+  const rows = [{ id: 1, unit: { code: "CS101", name: "Systems" } }];
+  const columns = [["id", "id"], ["unit.code", "code"]];
+  assert.equal(render(rows, { format: "table", columns }).trimEnd(), "id  code\n1   CS101");
+});

@@ -74,7 +74,7 @@ function renderTable(value: unknown, columns?: readonly [string, string][], widt
   if (!rows.every(isRecord)) return `${rows.map(String).join("\n")}\n`;
 
   const selected = columns ?? columnsOf(rows);
-  const values = rows.map((row) => selected.map(([key]) => formatCell(row[key])));
+  const values = rows.map((row) => selected.map(([key]) => formatCell(valueAt(row, key))));
   const natural = selected.map(([, label], index) =>
     Math.max(label.length, ...values.map((row) => row[index]?.length ?? 0)),
   );
@@ -82,6 +82,17 @@ function renderTable(value: unknown, columns?: readonly [string, string][], widt
   const line = (cells: readonly string[]) =>
     cells.map((cell, index) => truncate(cell, widths[index] ?? 0).padEnd(widths[index] ?? 0)).join(GAP).trimEnd();
   return `${line(selected.map(([, label]) => label))}\n${values.map(line).join("\n")}\n`;
+}
+
+/** A column key may reach into a nested object, as "unit.code". */
+function valueAt(row: Record<string, unknown>, key: string): unknown {
+  if (key in row) return row[key];
+  let current: unknown = row;
+  for (const step of key.split(".")) {
+    if (!isRecord(current)) return undefined;
+    current = current[step];
+  }
+  return current;
 }
 
 /**
