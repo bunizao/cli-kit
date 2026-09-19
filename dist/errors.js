@@ -28,6 +28,15 @@ export class CliError extends Error {
         this.hint = hint;
     }
 }
+/** Commander's help and version exits: the output is already written and nothing failed. */
+export function isInformationalExit(error) {
+    if (!error || typeof error !== "object")
+        return false;
+    if ("exitCode" in error && error.exitCode === 0)
+        return true;
+    const code = "code" in error ? String(error.code) : "";
+    return code.startsWith("commander.help") || code === "commander.version";
+}
 export function exitCodeFor(code) {
     return EXIT_CODES[code];
 }

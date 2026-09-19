@@ -8,6 +8,17 @@ export function resolveFormat(options, isTty) {
     }
     return selected[0] ?? (isTty ? "table" : "json");
 }
+/** The format a command will use, read from raw argv before Commander has parsed anything. */
+export function formatFromArgv(argv, isTty) {
+    const end = argv.indexOf("--");
+    const tokens = new Set(end === -1 ? argv : argv.slice(0, end));
+    try {
+        return resolveFormat({ json: tokens.has("--json"), yaml: tokens.has("--yaml"), table: tokens.has("--table") }, isTty);
+    }
+    catch {
+        return isTty ? "table" : "json";
+    }
+}
 export function render(value, options) {
     const filtered = options.fields?.length ? selectFields(value, options.fields) : value;
     if (options.format === "json") {

@@ -103,3 +103,31 @@ test("confirm keeps its non-interactive contract and asks at a terminal", async 
   assert.match(readAsked(), /remove 2 files/);
   assert.match(readAsked(), /Continue\?/);
 });
+
+test("editor runs the configured command on a temp file and returns what was saved", async () => {
+  const { mkdtempSync, writeFileSync, chmodSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "cli-kit-editor-"));
+  const fake = join(dir, "fake-editor");
+  writeFileSync(fake, "#!/bin/sh\nprintf 'hello from %s\\n' \"$(basename \"$1\")\" >> \"$1\"\n");
+  chmodSync(fake, 0o755);
+
+  const output = new PassThrough();
+  const read = collect(output);
+  const ui = createUi({ input: new PassThrough(), output, interactive: true, editor: fake });
+  assert.equal(await ui.editor("Body", { initial: "# Title\n" }), "# Title\nhello from message.md\n");
+  assert.match(read(), /Body: opening .*fake-editor, save and close to continue\./u);
+
+  const failing = join(dir, "failing-editor");
+  writeFileSync(failing, "#!/bin/sh\nexit 3\n");
+  chmodSync(failing, 0o755);
+  await assert.rejects(
+    () => createUi({ input: new PassThrough(), output: new PassThrough(), interactive: true, editor: failing }).editor("Body"),
+    (error) => error instanceof CliError && error.code === "cancelled",
+  );
+  await assert.rejects(
+    () => createUi({ input: new PassThrough(), output: new PassThrough(), interactive: false }).editor("Body"),
+    (error) => error instanceof CliError && error.code === "usage",
+  );
+});

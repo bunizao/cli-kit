@@ -1,4 +1,6 @@
 import { Command } from "commander";
+import { colorEnabled } from "./color.js";
+import { styledHelp } from "./help.js";
 export const VERBS = ["list", "show", "read", "get", "search", "send", "submit", "set", "mark-read"];
 const VERB_SET = new Set(VERBS);
 const mutations = new WeakSet();
@@ -8,15 +10,15 @@ const ACTIONS = {
     skills: new Set(["generate", "add"]),
 };
 export function createProgram(meta) {
-    return new Command()
+    const program = new Command()
         .name(meta.name)
-        .version(meta.version, "-V, --version")
+        .version(meta.version, "-V, --version", "Show the version")
         .description(meta.description)
-        .helpOption("-h, --help")
-        .addHelpCommand(true)
+        .helpOption("-h, --help", "Show help")
+        .helpCommand("help [command]", "Show help for a command")
         .showSuggestionAfterError()
         .exitOverride()
-        .configureOutput({ outputError: () => undefined })
+        .configureHelp(styledHelp())
         .option("--json", "Emit JSON")
         .option("--yaml", "Emit YAML")
         .option("--table", "Emit a human-readable table")
@@ -26,6 +28,12 @@ export function createProgram(meta) {
         .option("--no-color", "Disable color output")
         .option("-y, --yes", "Confirm mutations non-interactively")
         .option("--dry-run", "Print the mutation plan without applying it");
+    program.configureOutput({
+        outputError: () => undefined,
+        getOutHasColors: () => program.opts().color !== false && colorEnabled(process.stdout),
+        getErrHasColors: () => program.opts().color !== false && colorEnabled(process.stderr),
+    });
+    return program;
 }
 export function mutating(command) {
     mutations.add(command);

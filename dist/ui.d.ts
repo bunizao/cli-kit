@@ -20,6 +20,8 @@ export interface UiOptions {
     readonly env?: NodeJS.ProcessEnv;
     /** Aborting it cancels whichever prompt is open. */
     readonly signal?: AbortSignal;
+    /** The command `editor` runs instead of $VISUAL or $EDITOR; the file path is appended. */
+    readonly editor?: string;
 }
 export interface Spinner {
     start(message: string): void;
@@ -56,6 +58,15 @@ export interface Ui {
     }): Promise<string>;
     /** One secret, echoed as dots. Without a terminal this throws; callers offer a stdin flag instead. */
     password(message: string): Promise<string>;
+    /**
+     * Several lines, written in the person's $VISUAL or $EDITOR the way git asks for a
+     * commit message. Returns the file as saved. Without a terminal this throws; callers
+     * offer a file or stdin flag instead.
+     */
+    editor(message: string, options?: {
+        readonly initial?: string;
+        readonly extension?: string;
+    }): Promise<string>;
 }
 export declare const AUTOCOMPLETE_FROM = 8;
 /**

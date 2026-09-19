@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import * as clack from "@clack/prompts";
 import { isAgentEnvironment } from "./audience.js";
 import { CliError } from "./errors.js";
@@ -79,6 +83,26 @@ export function createUi(options = {}) {
             if (!interactive)
                 throw new CliError("usage", `${message} needs a terminal to enter a secret.`);
             return unwrap(await clack.password({ message, ...common }));
+        },
+        async editor(message, editorOptions = {}) {
+            if (!interactive)
+                throw new CliError("usage", `${message} needs a terminal to open an editor.`);
+            const env = options.env ?? process.env;
+            const command = options.editor ?? env.VISUAL ?? env.EDITOR ?? (process.platform === "win32" ? "notepad" : "vi");
+            const dir = mkdtempSync(join(tmpdir(), "cli-kit-"));
+            const file = join(dir, `message${editorOptions.extension ?? ".md"}`);
+            try {
+                writeFileSync(file, editorOptions.initial ?? "", "utf8");
+                clack.log.step(`${message}: opening ${command}, save and close to continue.`, common);
+                // The editor owns the terminal until it exits; a shell lets "code --wait" style values work.
+                const result = spawnSync(`${command} "${file}"`, { stdio: "inherit", shell: true });
+                if (result.status !== 0)
+                    throw new CliError("cancelled", `${command} exited with status ${result.status ?? "unknown"}.`);
+                return readFileSync(file, "utf8");
+            }
+            finally {
+                rmSync(dir, { recursive: true, force: true });
+            }
         },
     };
 }

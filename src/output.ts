@@ -20,6 +20,17 @@ export function resolveFormat(options: FormatOptions, isTty: boolean): OutputFor
   return (selected[0] as OutputFormat | undefined) ?? (isTty ? "table" : "json");
 }
 
+/** The format a command will use, read from raw argv before Commander has parsed anything. */
+export function formatFromArgv(argv: readonly string[], isTty: boolean): OutputFormat {
+  const end = argv.indexOf("--");
+  const tokens = new Set(end === -1 ? argv : argv.slice(0, end));
+  try {
+    return resolveFormat({ json: tokens.has("--json"), yaml: tokens.has("--yaml"), table: tokens.has("--table") }, isTty);
+  } catch {
+    return isTty ? "table" : "json";
+  }
+}
+
 export function render(
   value: unknown,
   options: {

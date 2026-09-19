@@ -6,5 +6,7 @@ export declare class CliError extends Error {
     readonly hint: string | undefined;
     constructor(code: ErrorCode, message: string, hint?: string);
 }
+/** Commander's help and version exits: the output is already written and nothing failed. */
+export declare function isInformationalExit(error: unknown): boolean;
 export declare function exitCodeFor(code: ErrorCode): number;
 export declare function normalizeError(error: unknown): CliError;

@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Writable } from "node:stream";
 
 import * as clack from "@clack/prompts";
@@ -27,6 +31,8 @@ export interface UiOptions {
   readonly env?: NodeJS.ProcessEnv;
   /** Aborting it cancels whichever prompt is open. */
   readonly signal?: AbortSignal;
+  /** The command `editor` runs instead of $VISUAL or $EDITOR; the file path is appended. */
+  readonly editor?: string;
 }
 
 export interface Spinner {
@@ -59,6 +65,12 @@ export interface Ui {
   text(message: string, options?: { readonly placeholder?: string; readonly initial?: string; readonly validate?: (value: string) => string | undefined }): Promise<string>;
   /** One secret, echoed as dots. Without a terminal this throws; callers offer a stdin flag instead. */
   password(message: string): Promise<string>;
+  /**
+   * Several lines, written in the person's $VISUAL or $EDITOR the way git asks for a
+   * commit message. Returns the file as saved. Without a terminal this throws; callers
+   * offer a file or stdin flag instead.
+   */
+  editor(message: string, options?: { readonly initial?: string; readonly extension?: string }): Promise<string>;
 }
 
 export const AUTOCOMPLETE_FROM = 8;
@@ -142,6 +154,24 @@ export function createUi(options: UiOptions = {}): Ui {
     async password(message) {
       if (!interactive) throw new CliError("usage", `${message} needs a terminal to enter a secret.`);
       return unwrap<string>(await clack.password({ message, ...common }));
+    },
+
+    async editor(message, editorOptions = {}) {
+      if (!interactive) throw new CliError("usage", `${message} needs a terminal to open an editor.`);
+      const env = options.env ?? process.env;
+      const command = options.editor ?? env.VISUAL ?? env.EDITOR ?? (process.platform === "win32" ? "notepad" : "vi");
+      const dir = mkdtempSync(join(tmpdir(), "cli-kit-"));
+      const file = join(dir, `message${editorOptions.extension ?? ".md"}`);
+      try {
+        writeFileSync(file, editorOptions.initial ?? "", "utf8");
+        clack.log.step(`${message}: opening ${command}, save and close to continue.`, common);
+        // The editor owns the terminal until it exits; a shell lets "code --wait" style values work.
+        const result = spawnSync(`${command} "${file}"`, { stdio: "inherit", shell: true });
+        if (result.status !== 0) throw new CliError("cancelled", `${command} exited with status ${result.status ?? "unknown"}.`);
+        return readFileSync(file, "utf8");
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     },
   };
 }

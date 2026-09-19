@@ -57,6 +57,42 @@ await program.parseAsync(args, { from: "user" });
 `insertDefaultVerb` accepts user arguments, not the Node executable and script prefix. It is a
 pure transform and does not mutate the provided array.
 
+Prefer `parseWithPrompts` over calling `parseAsync` yourself. It builds the program, parses,
+and when a person at a terminal left out a trailing positional or a required option, asks for
+it and parses again with the answer appended. `moodle activities list` becomes a unit picker
+instead of `missing required argument 'unit'`. Without a terminal the usage error is thrown
+unchanged, with the command's usage line and argument descriptions as its hint.
+
+```ts
+await parseWithPrompts(() => buildProgram(), args, {
+  ui,
+  fillers: {
+    unit: async ({ ui }) => ui.select("Which unit?", await unitChoices()),
+    task: async ({ provided, ui }) => ui.select("Which task?", await taskChoices(provided.unit)),
+  },
+});
+```
+
+A filler is looked up by argument name; without one, an argument with `.choices()` becomes a
+picker and anything else a text prompt labelled with its description. Fillers see the
+positionals typed so far, including earlier answers, so a task picker can load the chosen
+unit. The factory is called once per round because Commander programs do not parse twice.
+
+## Help
+
+`createProgram` installs one help layout for the family: name and version, usage, the
+commands, options, and examples, coloured on a terminal and plain in a pipe. `--no-color`,
+`NO_COLOR` and `FORCE_COLOR` are honoured. Group top-level commands with `helpSection`
+and add invocations with `examples`; text after two spaces and `#` renders as a comment.
+
+```ts
+helpSection(program.command("submit"), "Writing");
+examples(program, ["example units", "example submit UNIT report.pdf  # asks before uploading"]);
+```
+
+`isInformationalExit(error)` is true for the help and version exits Commander throws under
+`exitOverride`, including a bare noun with no verb, so the run loop can return 0 for them.
+
 List option flags that consume a separate value in `valueFlags`. This lets the arity counter ignore
 option values when flags are interleaved with positionals. Boolean flags and `--flag=value` do not
 need to be listed.
@@ -151,4 +187,6 @@ the same environment rule on its own, so an agent that allocates a pty still nev
 prompt. Agents that run commands in a terminal should export `CLI_AGENT=1`.
 
 `ui.password` masks a secret; without a terminal it throws so the caller can point at a
-`--token-stdin` style flag instead.
+`--token-stdin` style flag instead. `ui.editor` collects several lines in `$VISUAL` or
+`$EDITOR` the way git collects a commit message, and throws without a terminal so the
+caller can point at a `--body-file` style flag.
