@@ -9,7 +9,7 @@ function demo() {
   const submit = program.command("submit").description("Upload files.").argument("<ref>").argument("[files...]");
   helpSection(program.command("due").description("Items due soon.").argument("[unit]", "Unit code"), "Reading");
   const units = helpSection(program.command("units").aliases(["courses"]).description("Enrolled units."), "Reading");
-  units.command("show").description("One unit.").argument("<unit>", "Unit code");
+  units.command("show").description("One unit. Sections included.").argument("<unit>", "Unit code").option("--brief", "Names only.");
   helpSection(submit, "Writing");
   program.command("doctor").description("Diagnose the setup.");
   examples(program, ["demo due", "demo units  # every unit"]);
@@ -27,20 +27,20 @@ test("root help lists sections in registration order, then options and examples"
   const text = helpOf(demo());
   assert.equal(text, [
     "demo v1.2.3",
-    "Demo CLI.",
+    "Demo CLI",
     "",
     "Usage",
     "  demo [options] [command]",
     "",
     "Reading",
-    "  due [unit]               Items due soon.",
-    "  units, courses           Enrolled units.",
+    "  due [unit]               Items due soon",
+    "  units, courses           Enrolled units",
     "",
     "Writing",
-    "  submit <ref> [files...]  Upload files.",
+    "  submit <ref> [files...]  Upload files",
     "",
     "Commands",
-    "  doctor                   Diagnose the setup.",
+    "  doctor                   Diagnose the setup",
     "",
     "Options",
     "  -V, --version        Show the version",
@@ -64,31 +64,32 @@ test("root help lists sections in registration order, then options and examples"
   ].join("\n"));
 });
 
-test("subcommand help shows its path, usage and arguments, and keeps the implicit help command when nothing is sectioned", () => {
+test("subcommand help shows its path, usage and arguments, hides the implicit help command and a help-only Options, and names the global options", () => {
   const program = demo();
   const units = program.commands.find(command => command.name() === "units");
   assert.equal(helpOf(units), [
     "demo units",
-    "Enrolled units.",
+    "Enrolled units",
     "",
     "Usage",
     "  demo units [options] [command]",
     "",
     "Commands",
-    "  show <unit>     One unit.",
-    "  help [command]  Show help for a command",
+    "  show <unit>  One unit. Sections included.",
     "",
-    "Options",
-    "  -h, --help  Show help",
+    "Global options",
+    "  --json, --yaml, --table, --fields <fields>, --output <file>, --verbose,",
+    "  --no-color, --yes, --dry-run",
     "",
     "Run 'demo units <command> --help' for details on a command.",
     "",
   ].join("\n"));
 
+  // Two sentences keep their full stops; the one-sentence option loses its own.
   const show = units.commands.find(command => command.name() === "show");
   assert.equal(helpOf(show), [
     "demo units show",
-    "One unit.",
+    "One unit. Sections included.",
     "",
     "Usage",
     "  demo units show [options] <unit>",
@@ -97,15 +98,26 @@ test("subcommand help shows its path, usage and arguments, and keeps the implici
     "  unit  Unit code",
     "",
     "Options",
+    "  --brief     Names only",
     "  -h, --help  Show help",
     "",
+    "Global options",
+    "  --json, --yaml, --table, --fields <fields>, --output <file>, --verbose,",
+    "  --no-color, --yes, --dry-run",
+    "",
   ].join("\n"));
+});
+
+test("a trailing full stop is dropped before Commander's choices and default extras", () => {
+  const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo" });
+  program.command("post").addOption(program.createOption("--type <type>", "Thread type.").choices(["question", "post"]).default("question"));
+  assert.match(helpOf(program.commands[0]), /--type <type>  Thread type \(choices: "question", "post", default: "question"\)/u);
 });
 
 test("help is coloured only when the output stream has colours, and widths ignore the escape codes", () => {
   const colored = helpOf(demo(), { colors: true });
   assert.match(colored, /\[1mUsage\[22m/u);
-  assert.match(colored, /\[1mdue\[22m \[2m\[unit\]\[22m\s+Items due soon\./u);
+  assert.match(colored, /\[1mdue\[22m \[2m\[unit\]\[22m\s+Items due soon\n/u);
   assert.match(colored, /\[36m--json\[39m\s+Emit JSON/u);
   assert.match(colored, /demo units  \[2m# every unit\[22m/u);
   assert.doesNotMatch(helpOf(demo()), //u);

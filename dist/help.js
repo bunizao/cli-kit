@@ -39,15 +39,16 @@ export function styledHelp() {
 }
 function formatHelp(command, helper, paint) {
     const blocks = [];
+    const width = helper.helpWidth ?? 80;
     const title = (text) => paint("bold", text);
     const list = (items) => {
-        const width = Math.max(...items.map(item => helper.displayWidth(item.term)));
-        return items.map(item => helper.formatItem(item.term, width, item.description, helper));
+        const termWidth = Math.max(...items.map(item => helper.displayWidth(item.term)));
+        return items.map(item => helper.formatItem(item.term, termWidth, tidy(item.description), helper));
     };
     const version = command.parent ? undefined : command.version();
     blocks.push(`${paint("bold", commandPath(command))}${version ? ` ${paint("dim", `v${version}`)}` : ""}`);
     if (command.description())
-        blocks.push(helper.boxWrap(command.description(), helper.helpWidth ?? 80));
+        blocks.push(helper.boxWrap(tidy(command.description()), width));
     blocks.push("");
     // Commander's own usage line repeats the aliases ("units|courses"); the path is enough.
     blocks.push(title("Usage"), `  ${styleUsage(`${commandPath(command)} ${command.usage()}`, paint)}`, "");
@@ -55,36 +56,75 @@ function formatHelp(command, helper, paint) {
     if (args.length) {
         blocks.push(title("Arguments"), ...list(args.map(argument => ({ term: paint("bold", helper.argumentTerm(argument)), description: helper.argumentDescription(argument) }))), "");
     }
-    const commands = helper.visibleCommands(command);
-    const grouped = commands.some(child => sections.has(child));
+    // The implicit help command is not one of `command.commands`; the footer already says how to get help.
+    const commands = helper.visibleCommands(command).filter(child => command.commands.includes(child));
     const groups = new Map();
     for (const heading of sectionOrder.get(command) ?? [])
         groups.set(heading, []);
     for (const child of commands) {
-        // Once commands are sectioned the implicit help command is noise; the footer covers it.
-        if (grouped && child.name() === "help" && !child.parent)
-            continue;
         const heading = sections.get(child) ?? "Commands";
         groups.set(heading, [...(groups.get(heading) ?? []), child]);
     }
-    const rows = commands.map(child => ({ term: subcommandTerm(child, paint), description: helper.subcommandDescription(child) }));
-    const width = rows.length ? Math.max(...rows.map(row => helper.displayWidth(row.term))) : 0;
+    const termWidth = commands.length ? Math.max(...commands.map(child => helper.displayWidth(subcommandTerm(child, paint)))) : 0;
     for (const [heading, children] of groups) {
         if (!children.length)
             continue;
-        blocks.push(title(heading), ...children.map(child => helper.formatItem(subcommandTerm(child, paint), width, helper.subcommandDescription(child), helper)), "");
+        blocks.push(title(heading), ...children.map(child => helper.formatItem(subcommandTerm(child, paint), termWidth, tidy(helper.subcommandDescription(child)), helper)), "");
     }
+    // A section holding nothing but --help says nothing.
     const options = helper.visibleOptions(command);
-    if (options.length) {
+    if (options.some(option => option.long !== "--help")) {
         blocks.push(title("Options"), ...list(options.map(option => ({ term: paint("cyan", helper.optionTerm(option)), description: helper.optionDescription(option) }))), "");
     }
     const lines = exampleLines.get(command);
     if (lines?.length) {
         blocks.push(title("Examples"), ...lines.map(line => `  ${styleExample(line, paint)}`), "");
     }
+    // Root options apply after any subcommand too; a subcommand page names them once, without repeating the table.
+    const root = rootOf(command);
+    const globals = command.parent ? helper.visibleOptions(root).filter(option => option.long !== "--help" && option.long !== "--version") : [];
+    if (globals.length) {
+        blocks.push(title("Global options"), ...wrapItems(globals.map(longFlag), width - 2).map(line => `  ${paint("dim", line)}`), "");
+    }
     if (commands.length)
         blocks.push(paint("dim", `Run '${commandPath(command)} <command> --help' for details on a command.`), "");
     return `${blocks.join("\n").trimEnd()}\n`;
+}
+// "-o, --output <file>" reads as "--output <file>": the long flag with its own placeholder.
+function longFlag(option) {
+    return option.flags.split(/,\s*/u).find(part => part.startsWith("--")) ?? option.flags;
+}
+// Wrap flag by flag, so "--limit <number>" never splits across lines the way word wrapping would.
+function wrapItems(items, width) {
+    const lines = [];
+    let line = "";
+    for (const item of items) {
+        const joined = line ? `${line}, ${item}` : item;
+        if (line && joined.length > width) {
+            lines.push(`${line},`);
+            line = item;
+        }
+        else {
+            line = joined;
+        }
+    }
+    if (line)
+        lines.push(line);
+    return lines;
+}
+function rootOf(command) {
+    let current = command;
+    while (current.parent)
+        current = current.parent;
+    return current;
+}
+const EXTRAS = /( \((?:choices|default|env|preset):[^]*\))$/u;
+/** A one-sentence description reads as a man page does, without its full stop; prose keeps it. */
+function tidy(description) {
+    const match = EXTRAS.exec(description);
+    const body = match ? description.slice(0, match.index) : description;
+    const single = !/[.!?]\s+\S/u.test(body);
+    return `${single ? body.replace(/\.$/u, "") : body}${match ? match[1] : ""}`;
 }
 function commandPath(command) {
     const names = [];
