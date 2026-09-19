@@ -33,6 +33,11 @@ export interface Spinner {
 }
 export interface Ui {
     readonly interactive: boolean;
+    /**
+     * The CLI's wordmark, for the first screen a person sees (onboarding, a guided setup).
+     * A pipe gets the tagline alone, so a transcript never carries the art.
+     */
+    banner(art: string, tagline?: string): void;
     intro(title: string): void;
     outro(message: string): void;
     step(message: string): void;

@@ -6,11 +6,13 @@ import {
   ERROR_CODES,
   EXIT_CODES,
   VERBS,
+  createTheme,
   exitCodeFor,
   normalizeError,
   render,
   reportError,
   resolveFormat,
+  toneOf,
 } from "../dist/index.js";
 
 test("exports the versioned CLI contract", () => {
@@ -77,4 +79,29 @@ test("a column key may reach into a nested object", () => {
   const rows = [{ id: 1, unit: { code: "CS101", name: "Systems" } }];
   const columns = [["id", "id"], ["unit.code", "code"]];
   assert.equal(render(rows, { format: "table", columns }).trimEnd(), "id  code\n1   CS101");
+});
+
+test("a themed table dims the header, keys the first column and colours status words", () => {
+  const theme = createTheme(true);
+  const rows = [{ code: "UNIT1", name: "Unit A", status: "Overdue" }, { code: "UNIT2", name: "Unit B", status: "Complete" }];
+  const [header, first, second] = render(rows, { format: "table", theme }).trimEnd().split("\n");
+  assert.equal(header, "[2mcode [22m  [2mname  [22m  [2mstatus[22m");
+  assert.equal(first, "[36mUNIT1[39m  Unit A  [31mOverdue[39m");
+  assert.equal(second, "[36mUNIT2[39m  Unit B  [32mComplete[39m");
+  // Overrides win over the shared vocabulary; an unthemed render stays byte-identical to before.
+  assert.match(render(rows, { format: "table", theme, tones: { overdue: "muted" } }), /\[2mOverdue\[22m/u);
+  assert.equal(render(rows, { format: "table" }), "code   name    status\nUNIT1  Unit A  Overdue\nUNIT2  Unit B  Complete\n");
+  assert.doesNotMatch(render(rows, { format: "table", theme: createTheme(false) }), //u);
+});
+
+test("toneOf reads the shared status vocabulary and negations", () => {
+  assert.equal(toneOf("Submitted for grading"), "success");
+  assert.equal(toneOf("Not graded"), "muted");
+  assert.equal(toneOf("Draft (not submitted)"), "muted");
+  assert.equal(toneOf("3 days overdue"), "danger");
+  assert.equal(toneOf("Working On It"), "warning");
+  assert.equal(toneOf("announcement"), "accent");
+  assert.equal(toneOf("question"), "info");
+  assert.equal(toneOf("Unit A"), undefined);
+  assert.equal(toneOf("Rediscuss", { rediscuss: "warning" }), "warning");
 });

@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { stringify as stringifyYaml } from "yaml";
 
 import { CliError } from "./errors.js";
+import type { Theme, Tone } from "./theme.js";
 
 export type OutputFormat = "table" | "json" | "yaml";
 
@@ -41,6 +42,10 @@ export function render(
     width?: number;
     /** Indent JSON. Readable on a terminal, wasted bytes in a pipe. */
     pretty?: boolean;
+    /** Colour the table: dim headers, the first column as a key, status-like columns by tone. */
+    theme?: Theme;
+    /** The caller's own status words, when the shared vocabulary would misread them. */
+    tones?: Readonly<Record<string, Tone>>;
   },
 ): string {
   const filtered = options.fields?.length ? selectFields(value, options.fields) : value;
@@ -48,7 +53,7 @@ export function render(
     return `${options.pretty === false ? JSON.stringify(filtered) : JSON.stringify(filtered, null, 2)}\n`;
   }
   if (options.format === "yaml") return stringifyYaml(filtered);
-  return renderTable(filtered, options.columns, options.width);
+  return renderTable(filtered, options.columns, options.width, options.theme, options.tones);
 }
 
 export async function writeOutput(text: string, options: { output?: string }): Promise<void> {
@@ -79,7 +84,10 @@ function selectFields(value: unknown, fields: readonly string[]): unknown {
 const MIN_COLUMN = 8;
 const GAP = "  ";
 
-function renderTable(value: unknown, columns?: readonly [string, string][], width?: number): string {
+/** Columns whose cells are status words rather than names, so their colour carries meaning. */
+const STATUS_COLUMN = /status|state|type|kind|category|grade|role|due/iu;
+
+function renderTable(value: unknown, columns?: readonly [string, string][], width?: number, theme?: Theme, tones?: Readonly<Record<string, Tone>>): string {
   const rows = Array.isArray(value) ? value : [value];
   if (rows.length === 0) return "";
   if (!rows.every(isRecord)) return `${rows.map(String).join("\n")}\n`;
@@ -90,9 +98,18 @@ function renderTable(value: unknown, columns?: readonly [string, string][], widt
     Math.max(label.length, ...values.map((row) => row[index]?.length ?? 0)),
   );
   const widths = fitWidths(natural, width);
-  const line = (cells: readonly string[]) =>
-    cells.map((cell, index) => truncate(cell, widths[index] ?? 0).padEnd(widths[index] ?? 0)).join(GAP).trimEnd();
-  return `${line(selected.map(([, label]) => label))}\n${values.map(line).join("\n")}\n`;
+  // Padding is measured on the plain text; colour is wrapped around the padded cell afterwards.
+  const line = (cells: readonly string[], paint: (cell: string, index: number) => string) =>
+    cells.map((cell, index) => {
+      const fitted = truncate(cell, widths[index] ?? 0);
+      return paint(index === cells.length - 1 ? fitted : fitted.padEnd(widths[index] ?? 0), index);
+    }).join(GAP).trimEnd();
+  const plain = (cell: string) => cell;
+  const cellPaint = theme
+    ? (cell: string, index: number) => index === 0 ? theme.key(cell) : STATUS_COLUMN.test(selected[index]?.[0] ?? "") ? theme.status(cell, tones) : cell
+    : plain;
+  const header = line(selected.map(([, label]) => label), theme ? cell => theme.dim(cell) : plain);
+  return `${header}\n${values.map(row => line(row, cellPaint)).join("\n")}\n`;
 }
 
 /** A column key may reach into a nested object, as "unit.code". */

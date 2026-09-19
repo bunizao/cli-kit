@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createProgram, examples, helpSection } from "../dist/index.js";
+import { banner, createProgram, examples, helpSection } from "../dist/index.js";
 
 function demo() {
   const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI." });
@@ -55,7 +55,7 @@ test("root help lists sections in registration order, then options and examples"
     "  --dry-run            Print the mutation plan without applying it",
     "  -h, --help           Show help",
     "",
-    "Examples",
+    "Try",
     "  demo due",
     "  demo units  # every unit",
     "",
@@ -121,6 +121,18 @@ test("help is coloured only when the output stream has colours, and widths ignor
   assert.match(colored, /\[36m--json\[39m\s+Emit JSON/u);
   assert.match(colored, /demo units  \[2m# every unit\[22m/u);
   assert.doesNotMatch(helpOf(demo()), //u);
+});
+
+test("a banner replaces the root header for a terminal or forced colour, never for a pipe", () => {
+  const art = "\n  _|  _  _  _\n (_| (/_ | | | (_)\n";
+  const withArt = () => banner(demo(), art);
+  // A terminal reports a width; a pipe does not.
+  assert.match(helpOf(withArt(), { width: 100 }), /^  _\|  _  _  _\n \(_\| \(\/_ \| \| \| \(_\)\n\nDemo CLI  v1\.2\.3\n\nUsage\n/u);
+  assert.match(helpOf(withArt(), { width: null, colors: true }), /^\u001b\[36m  _\|  _  _  _\u001b\[39m\n/u);
+  assert.match(helpOf(withArt(), { width: null }), /^demo v1\.2\.3\nDemo CLI\n/u);
+  // Subcommand pages keep their plain path header.
+  const units = withArt().commands.find(command => command.name() === "units");
+  assert.match(helpOf(units, { width: 100 }), /^demo units\n/u);
 });
 
 test("--no-color turns help colour off even on a colour terminal", async () => {

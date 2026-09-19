@@ -1,3 +1,4 @@
+import type { Theme, Tone } from "./theme.js";
 export type OutputFormat = "table" | "json" | "yaml";
 export interface FormatOptions {
     readonly json?: boolean;
@@ -16,6 +17,10 @@ export declare function render(value: unknown, options: {
     width?: number;
     /** Indent JSON. Readable on a terminal, wasted bytes in a pipe. */
     pretty?: boolean;
+    /** Colour the table: dim headers, the first column as a key, status-like columns by tone. */
+    theme?: Theme;
+    /** The caller's own status words, when the shared vocabulary would misread them. */
+    tones?: Readonly<Record<string, Tone>>;
 }): string;
 export declare function writeOutput(text: string, options: {
     output?: string;

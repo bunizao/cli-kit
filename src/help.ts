@@ -5,6 +5,7 @@ import { painter, type Paint } from "./color.js";
 const sections = new WeakMap<Command, string>();
 const sectionOrder = new WeakMap<Command, string[]>();
 const exampleLines = new WeakMap<Command, readonly string[]>();
+const banners = new WeakMap<Command, string>();
 
 /**
  * List a subcommand under `title` in its parent's help instead of the one flat list.
@@ -20,9 +21,18 @@ export function helpSection(command: Command, title: string): Command {
   return command;
 }
 
-/** Invocations shown under "Examples" in the command's help; text after `  # ` renders as a comment. */
+/** A few invocations shown under "Try" in the command's help; text after `  # ` renders as a comment. */
 export function examples(command: Command, lines: readonly string[]): Command {
   exampleLines.set(command, lines);
+  return command;
+}
+
+/**
+ * ASCII art shown above the root help page, but only to a person: a pipe and an agent
+ * get the plain header, because art in a transcript is noise.
+ */
+export function banner(command: Command, art: string): Command {
+  banners.set(command, art.replace(/^\n+|\s+$/gu, ""));
   return command;
 }
 
@@ -32,7 +42,7 @@ interface HelpContext {
   readonly outputHasColors?: boolean;
 }
 
-type StyledHelper = Help & { hasColors?: boolean };
+type StyledHelper = Help & { hasColors?: boolean; terminal?: boolean };
 
 /**
  * The help layout every CLI in the family shares: name and version, a usage line, the
@@ -44,14 +54,17 @@ export function styledHelp(): Partial<Help> {
     prepareContext(this: StyledHelper, context: HelpContext) {
       this.helpWidth = this.helpWidth ?? context.helpWidth ?? 80;
       this.hasColors = context.outputHasColors ?? false;
+      // Commander reports a width only for a terminal; forced colour means a person asked for the styled page.
+      this.terminal = typeof context.helpWidth === "number" || Boolean(context.outputHasColors);
     },
     formatHelp(this: StyledHelper, command: Command, helper: Help) {
-      return formatHelp(command, helper, painter(Boolean((helper as StyledHelper).hasColors)));
+      const styled = helper as StyledHelper;
+      return formatHelp(command, helper, painter(Boolean(styled.hasColors)), Boolean(styled.terminal));
     },
   };
 }
 
-function formatHelp(command: Command, helper: Help, paint: Paint): string {
+function formatHelp(command: Command, helper: Help, paint: Paint, terminal: boolean): string {
   const blocks: string[] = [];
   const width = helper.helpWidth ?? 80;
   const title = (text: string) => paint("bold", text);
@@ -61,8 +74,15 @@ function formatHelp(command: Command, helper: Help, paint: Paint): string {
   };
 
   const version = command.parent ? undefined : command.version();
-  blocks.push(`${paint("bold", commandPath(command))}${version ? ` ${paint("dim", `v${version}`)}` : ""}`);
-  if (command.description()) blocks.push(helper.boxWrap(tidy(command.description()), width));
+  const art = command.parent ? undefined : banners.get(command);
+  if (art && terminal) {
+    // The wordmark is the name; the version rides on the description line instead of a second header.
+    blocks.push(...art.split("\n").map(line => paint("cyan", line)), "");
+    if (command.description()) blocks.push(`${helper.boxWrap(tidy(command.description()), width)}${version ? `  ${paint("dim", `v${version}`)}` : ""}`);
+  } else {
+    blocks.push(`${paint("bold", commandPath(command))}${version ? ` ${paint("dim", `v${version}`)}` : ""}`);
+    if (command.description()) blocks.push(helper.boxWrap(tidy(command.description()), width));
+  }
   blocks.push("");
 
   // Commander's own usage line repeats the aliases ("units|courses"); the path is enough.
@@ -95,7 +115,7 @@ function formatHelp(command: Command, helper: Help, paint: Paint): string {
 
   const lines = exampleLines.get(command);
   if (lines?.length) {
-    blocks.push(title("Examples"), ...lines.map(line => `  ${styleExample(line, paint)}`), "");
+    blocks.push(title("Try"), ...lines.map(line => `  ${styleExample(line, paint)}`), "");
   }
 
   // Root options apply after any subcommand too; a subcommand page names them once, without repeating the table.

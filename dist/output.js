@@ -26,7 +26,7 @@ export function render(value, options) {
     }
     if (options.format === "yaml")
         return stringifyYaml(filtered);
-    return renderTable(filtered, options.columns, options.width);
+    return renderTable(filtered, options.columns, options.width, options.theme, options.tones);
 }
 export async function writeOutput(text, options) {
     if (options.output) {
@@ -56,7 +56,9 @@ function selectFields(value, fields) {
 /** Narrower than this and a column carries no information, so overflow is the lesser evil. */
 const MIN_COLUMN = 8;
 const GAP = "  ";
-function renderTable(value, columns, width) {
+/** Columns whose cells are status words rather than names, so their colour carries meaning. */
+const STATUS_COLUMN = /status|state|type|kind|category|grade|role|due/iu;
+function renderTable(value, columns, width, theme, tones) {
     const rows = Array.isArray(value) ? value : [value];
     if (rows.length === 0)
         return "";
@@ -66,8 +68,17 @@ function renderTable(value, columns, width) {
     const values = rows.map((row) => selected.map(([key]) => formatCell(valueAt(row, key))));
     const natural = selected.map(([, label], index) => Math.max(label.length, ...values.map((row) => row[index]?.length ?? 0)));
     const widths = fitWidths(natural, width);
-    const line = (cells) => cells.map((cell, index) => truncate(cell, widths[index] ?? 0).padEnd(widths[index] ?? 0)).join(GAP).trimEnd();
-    return `${line(selected.map(([, label]) => label))}\n${values.map(line).join("\n")}\n`;
+    // Padding is measured on the plain text; colour is wrapped around the padded cell afterwards.
+    const line = (cells, paint) => cells.map((cell, index) => {
+        const fitted = truncate(cell, widths[index] ?? 0);
+        return paint(index === cells.length - 1 ? fitted : fitted.padEnd(widths[index] ?? 0), index);
+    }).join(GAP).trimEnd();
+    const plain = (cell) => cell;
+    const cellPaint = theme
+        ? (cell, index) => index === 0 ? theme.key(cell) : STATUS_COLUMN.test(selected[index]?.[0] ?? "") ? theme.status(cell, tones) : cell
+        : plain;
+    const header = line(selected.map(([, label]) => label), theme ? cell => theme.dim(cell) : plain);
+    return `${header}\n${values.map(row => line(row, cellPaint)).join("\n")}\n`;
 }
 /** A column key may reach into a nested object, as "unit.code". */
 function valueAt(row, key) {

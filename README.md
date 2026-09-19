@@ -81,14 +81,29 @@ unit. The factory is called once per round because Commander programs do not par
 ## Help
 
 `createProgram` installs one help layout for the family: name and version, usage, the
-commands, options, and examples, coloured on a terminal and plain in a pipe. `--no-color`,
-`NO_COLOR` and `FORCE_COLOR` are honoured. Group top-level commands with `helpSection`
-and add invocations with `examples`; text after two spaces and `#` renders as a comment.
+commands, options, and a short "Try" list, coloured on a terminal and plain in a pipe.
+`--no-color`, `NO_COLOR` and `FORCE_COLOR` are honoured. Group top-level commands with
+`helpSection` the way `gh` does (core commands first, then the rest), add two or three
+invocations with `examples` (text after two spaces and `#` renders as a comment), and
+give the root a wordmark with `banner`; the art shows only to a person at a terminal.
 
 ```ts
-helpSection(program.command("submit"), "Writing");
+helpSection(program.command("submit"), "Core commands");
 examples(program, ["example units", "example submit UNIT report.pdf  # asks before uploading"]);
+banner(program, EXAMPLE_WORDMARK);
 ```
+
+## Theme
+
+`createTheme(enabled)` paints the roles every CLI's human output shares, so a person
+learns once what each colour means: `key` (cyan) is something they can type back, such
+as a unit code or task number; `subject` (bold) is what they gave, such as files or a
+message; `target` (bold cyan) is where it goes; `dim` is a secondary fact; `status`
+colours a word by its `toneOf`, the vocabulary learning sites share ("overdue" is
+danger, "graded" success, "not started" muted, "announcement" accent). Pass the theme
+to `render` and a table gets a dim header, a keyed first column and toned status
+columns; pass `tones` for words the shared list would misread. `ui.banner(art, tagline)`
+opens an onboarding flow with the wordmark.
 
 `isInformationalExit(error)` is true for the help and version exits Commander throws under
 `exitOverride`, including a bare noun with no verb, so the run loop can return 0 for them.

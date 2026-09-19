@@ -131,3 +131,18 @@ test("editor runs the configured command on a temp file and returns what was sav
     (error) => error instanceof CliError && error.code === "usage",
   );
 });
+
+test("banner paints the art for a person and leaves a pipe the tagline alone", () => {
+  const art = "\n  _|\n (_|\n";
+  const interactiveOutput = new PassThrough();
+  const readInteractive = collect(interactiveOutput);
+  createUi({ input: new PassThrough(), output: interactiveOutput, interactive: true, env: { FORCE_COLOR: "1" } }).banner(art, "Demo from the command line.");
+  assert.equal(readInteractive(), "[36m  _|[39m\n[36m (_|[39m\n[2mDemo from the command line.[22m\n\n");
+
+  const plainOutput = new PassThrough();
+  const readPlain = collect(plainOutput);
+  const plain = createUi({ input: new PassThrough(), output: plainOutput, interactive: false });
+  plain.banner(art, "Demo from the command line.");
+  plain.banner(art);
+  assert.equal(readPlain(), "Demo from the command line.\n");
+});

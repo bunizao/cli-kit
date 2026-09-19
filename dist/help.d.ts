@@ -5,8 +5,13 @@ import type { Command, Help } from "commander";
  * "Reading" precedes "Setup" however the commands were registered.
  */
 export declare function helpSection(command: Command, title: string): Command;
-/** Invocations shown under "Examples" in the command's help; text after `  # ` renders as a comment. */
+/** A few invocations shown under "Try" in the command's help; text after `  # ` renders as a comment. */
 export declare function examples(command: Command, lines: readonly string[]): Command;
+/**
+ * ASCII art shown above the root help page, but only to a person: a pipe and an agent
+ * get the plain header, because art in a transcript is noise.
+ */
+export declare function banner(command: Command, art: string): Command;
 /**
  * The help layout every CLI in the family shares: name and version, a usage line, the
  * commands grouped by section, then options and examples. Colour follows the output

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as clack from "@clack/prompts";
 import { isAgentEnvironment } from "./audience.js";
+import { colorEnabled, painter } from "./color.js";
 import { CliError } from "./errors.js";
 export const AUTOCOMPLETE_FROM = 8;
 /**
@@ -19,8 +20,18 @@ export function createUi(options = {}) {
         ?? (Boolean(input.isTTY) && Boolean(output.isTTY) && !isAgentEnvironment(options.env));
     const common = { input, output, ...(options.signal ? { signal: options.signal } : {}) };
     const plain = (text) => output.write(`${text}\n`);
+    const paint = painter(colorEnabled(output, options.env));
     return {
         interactive,
+        banner(art, tagline) {
+            if (!interactive) {
+                if (tagline)
+                    plain(tagline);
+                return;
+            }
+            const lines = art.replace(/^\n+|\s+$/gu, "").split("\n").map(line => paint("cyan", line));
+            output.write(`${lines.join("\n")}\n${tagline ? `${paint("dim", tagline)}\n` : ""}\n`);
+        },
         intro: title => (interactive ? clack.intro(title, common) : plain(title)),
         outro: message => (interactive ? clack.outro(message, common) : plain(message)),
         step: message => (interactive ? clack.log.step(message, common) : plain(message)),

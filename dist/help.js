@@ -2,6 +2,7 @@ import { painter } from "./color.js";
 const sections = new WeakMap();
 const sectionOrder = new WeakMap();
 const exampleLines = new WeakMap();
+const banners = new WeakMap();
 /**
  * List a subcommand under `title` in its parent's help instead of the one flat list.
  * Sections appear in the order they were first named, so the caller decides that
@@ -16,9 +17,17 @@ export function helpSection(command, title) {
     }
     return command;
 }
-/** Invocations shown under "Examples" in the command's help; text after `  # ` renders as a comment. */
+/** A few invocations shown under "Try" in the command's help; text after `  # ` renders as a comment. */
 export function examples(command, lines) {
     exampleLines.set(command, lines);
+    return command;
+}
+/**
+ * ASCII art shown above the root help page, but only to a person: a pipe and an agent
+ * get the plain header, because art in a transcript is noise.
+ */
+export function banner(command, art) {
+    banners.set(command, art.replace(/^\n+|\s+$/gu, ""));
     return command;
 }
 /**
@@ -31,13 +40,16 @@ export function styledHelp() {
         prepareContext(context) {
             this.helpWidth = this.helpWidth ?? context.helpWidth ?? 80;
             this.hasColors = context.outputHasColors ?? false;
+            // Commander reports a width only for a terminal; forced colour means a person asked for the styled page.
+            this.terminal = typeof context.helpWidth === "number" || Boolean(context.outputHasColors);
         },
         formatHelp(command, helper) {
-            return formatHelp(command, helper, painter(Boolean(helper.hasColors)));
+            const styled = helper;
+            return formatHelp(command, helper, painter(Boolean(styled.hasColors)), Boolean(styled.terminal));
         },
     };
 }
-function formatHelp(command, helper, paint) {
+function formatHelp(command, helper, paint, terminal) {
     const blocks = [];
     const width = helper.helpWidth ?? 80;
     const title = (text) => paint("bold", text);
@@ -46,9 +58,18 @@ function formatHelp(command, helper, paint) {
         return items.map(item => helper.formatItem(item.term, termWidth, tidy(item.description), helper));
     };
     const version = command.parent ? undefined : command.version();
-    blocks.push(`${paint("bold", commandPath(command))}${version ? ` ${paint("dim", `v${version}`)}` : ""}`);
-    if (command.description())
-        blocks.push(helper.boxWrap(tidy(command.description()), width));
+    const art = command.parent ? undefined : banners.get(command);
+    if (art && terminal) {
+        // The wordmark is the name; the version rides on the description line instead of a second header.
+        blocks.push(...art.split("\n").map(line => paint("cyan", line)), "");
+        if (command.description())
+            blocks.push(`${helper.boxWrap(tidy(command.description()), width)}${version ? `  ${paint("dim", `v${version}`)}` : ""}`);
+    }
+    else {
+        blocks.push(`${paint("bold", commandPath(command))}${version ? ` ${paint("dim", `v${version}`)}` : ""}`);
+        if (command.description())
+            blocks.push(helper.boxWrap(tidy(command.description()), width));
+    }
     blocks.push("");
     // Commander's own usage line repeats the aliases ("units|courses"); the path is enough.
     blocks.push(title("Usage"), `  ${styleUsage(`${commandPath(command)} ${command.usage()}`, paint)}`, "");
@@ -78,7 +99,7 @@ function formatHelp(command, helper, paint) {
     }
     const lines = exampleLines.get(command);
     if (lines?.length) {
-        blocks.push(title("Examples"), ...lines.map(line => `  ${styleExample(line, paint)}`), "");
+        blocks.push(title("Try"), ...lines.map(line => `  ${styleExample(line, paint)}`), "");
     }
     // Root options apply after any subcommand too; a subcommand page names them once, without repeating the table.
     const root = rootOf(command);

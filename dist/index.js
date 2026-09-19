@@ -8,3 +8,4 @@ export * from "./output.js";
 export * from "./program.js";
 export * from "./report.js";
 export * from "./ui.js";
+export * from "./theme.js";

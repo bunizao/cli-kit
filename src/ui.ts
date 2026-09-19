@@ -7,6 +7,7 @@ import type { Writable } from "node:stream";
 import * as clack from "@clack/prompts";
 
 import { isAgentEnvironment } from "./audience.js";
+import { colorEnabled, painter } from "./color.js";
 import { CliError } from "./errors.js";
 
 /**
@@ -46,6 +47,11 @@ export interface Spinner {
 
 export interface Ui {
   readonly interactive: boolean;
+  /**
+   * The CLI's wordmark, for the first screen a person sees (onboarding, a guided setup).
+   * A pipe gets the tagline alone, so a transcript never carries the art.
+   */
+  banner(art: string, tagline?: string): void;
   intro(title: string): void;
   outro(message: string): void;
   step(message: string): void;
@@ -89,8 +95,18 @@ export function createUi(options: UiOptions = {}): Ui {
   const common = { input, output, ...(options.signal ? { signal: options.signal } : {}) };
   const plain = (text: string) => output.write(`${text}\n`);
 
+  const paint = painter(colorEnabled(output as Writable & { isTTY?: boolean }, options.env));
+
   return {
     interactive,
+    banner(art, tagline) {
+      if (!interactive) {
+        if (tagline) plain(tagline);
+        return;
+      }
+      const lines = art.replace(/^\n+|\s+$/gu, "").split("\n").map(line => paint("cyan", line));
+      output.write(`${lines.join("\n")}\n${tagline ? `${paint("dim", tagline)}\n` : ""}\n`);
+    },
     intro: title => (interactive ? clack.intro(title, common) : plain(title)),
     outro: message => (interactive ? clack.outro(message, common) : plain(message)),
     step: message => (interactive ? clack.log.step(message, common) : plain(message)),
