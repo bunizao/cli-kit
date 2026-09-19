@@ -1,12 +1,19 @@
 import { painter } from "./color.js";
 const sections = new WeakMap();
+const sectionOrder = new WeakMap();
 const exampleLines = new WeakMap();
 /**
  * List a subcommand under `title` in its parent's help instead of the one flat list.
- * Sections appear in the order their first command was registered.
+ * Sections appear in the order they were first named, so the caller decides that
+ * "Reading" precedes "Setup" however the commands were registered.
  */
 export function helpSection(command, title) {
     sections.set(command, title);
+    if (command.parent) {
+        const order = sectionOrder.get(command.parent) ?? [];
+        if (!order.includes(title))
+            sectionOrder.set(command.parent, [...order, title]);
+    }
     return command;
 }
 /** Invocations shown under "Examples" in the command's help; text after `  # ` renders as a comment. */
@@ -51,6 +58,8 @@ function formatHelp(command, helper, paint) {
     const commands = helper.visibleCommands(command);
     const grouped = commands.some(child => sections.has(child));
     const groups = new Map();
+    for (const heading of sectionOrder.get(command) ?? [])
+        groups.set(heading, []);
     for (const child of commands) {
         // Once commands are sectioned the implicit help command is noise; the footer covers it.
         if (grouped && child.name() === "help" && !child.parent)
@@ -61,6 +70,8 @@ function formatHelp(command, helper, paint) {
     const rows = commands.map(child => ({ term: subcommandTerm(child, paint), description: helper.subcommandDescription(child) }));
     const width = rows.length ? Math.max(...rows.map(row => helper.displayWidth(row.term))) : 0;
     for (const [heading, children] of groups) {
+        if (!children.length)
+            continue;
         blocks.push(title(heading), ...children.map(child => helper.formatItem(subcommandTerm(child, paint), width, helper.subcommandDescription(child), helper)), "");
     }
     const options = helper.visibleOptions(command);

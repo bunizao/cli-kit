@@ -101,6 +101,21 @@ test("a required option is asked for too", async () => {
   assert.deepEqual(calls, [["post", "UNIT1", "Week 3 question"]]);
 });
 
+test("a missing positional is asked for before a missing required option, in one round", async () => {
+  const calls = [];
+  const input = new PassThrough();
+  const ui = createUi({ input, output: new PassThrough(), interactive: true });
+  const asked = [];
+  const fillers = { unit: async () => { asked.push("unit"); return "UNIT1"; } };
+  const builds = [];
+  press(input, "Week 3 question", 20);
+  press(input, ENTER, 40);
+  await parseWithPrompts(() => { builds.push(1); return build(calls); }, ["post"], { ui, fillers });
+  assert.deepEqual(calls, [["post", "UNIT1", "Week 3 question"]]);
+  assert.deepEqual(asked, ["unit"]);
+  assert.equal(builds.length, 2);
+});
+
 test("other errors pass through untouched", async () => {
   const calls = [];
   const ui = createUi({ input: new PassThrough(), output: new PassThrough(), interactive: true });

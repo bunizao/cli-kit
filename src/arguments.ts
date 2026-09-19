@@ -72,8 +72,11 @@ function failingCommand(error: unknown): FailingCommand | undefined {
 }
 
 async function answersFor(command: Command, code: string, options: PromptParseOptions): Promise<string[]> {
-  if (code === "commander.missingArgument") return fillPositionals(command, options);
-  return fillOption(command, options.ui);
+  // Commander reports a missing required option before it counts positionals, but a person
+  // expects to name the unit before the title; ask in that order, in one round.
+  const positionals = await fillPositionals(command, options);
+  if (code === "commander.missingArgument") return positionals;
+  return [...positionals, ...(await fillOption(command, options.ui))];
 }
 
 async function fillPositionals(command: Command, options: PromptParseOptions): Promise<string[]> {

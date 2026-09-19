@@ -5,10 +5,12 @@ import { createProgram, examples, helpSection } from "../dist/index.js";
 
 function demo() {
   const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI." });
+  // Registered out of section order on purpose: the first helpSection call for a title fixes its place.
+  const submit = program.command("submit").description("Upload files.").argument("<ref>").argument("[files...]");
   helpSection(program.command("due").description("Items due soon.").argument("[unit]", "Unit code"), "Reading");
   const units = helpSection(program.command("units").aliases(["courses"]).description("Enrolled units."), "Reading");
   units.command("show").description("One unit.").argument("<unit>", "Unit code");
-  helpSection(program.command("submit").description("Upload files.").argument("<ref>").argument("[files...]"), "Writing");
+  helpSection(submit, "Writing");
   program.command("doctor").description("Diagnose the setup.");
   examples(program, ["demo due", "demo units  # every unit"]);
   return program;

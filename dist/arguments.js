@@ -50,9 +50,12 @@ function failingCommand(error) {
     return { command: command, code };
 }
 async function answersFor(command, code, options) {
+    // Commander reports a missing required option before it counts positionals, but a person
+    // expects to name the unit before the title; ask in that order, in one round.
+    const positionals = await fillPositionals(command, options);
     if (code === "commander.missingArgument")
-        return fillPositionals(command, options);
-    return fillOption(command, options.ui);
+        return positionals;
+    return [...positionals, ...(await fillOption(command, options.ui))];
 }
 async function fillPositionals(command, options) {
     const typed = command.args;
