@@ -1,0 +1,83 @@
+import * as clack from "@clack/prompts";
+import { CliError } from "./errors.js";
+export const AUTOCOMPLETE_FROM = 8;
+/**
+ * Every CLI in the family draws the same way: prompts, steps and spinners on stderr
+ * in the clack style when a person is at the keyboard; plain completed lines when the
+ * output is a pipe; and never a prompt without a terminal, because a hung agent is
+ * worse than an error that says what to pass.
+ */
+export function createUi(options = {}) {
+    const input = options.input ?? process.stdin;
+    const output = options.output ?? process.stderr;
+    const interactive = options.interactive ?? (Boolean(input.isTTY) && Boolean(output.isTTY));
+    const common = { input, output };
+    const plain = (text) => output.write(`${text}\n`);
+    return {
+        interactive,
+        intro: title => (interactive ? clack.intro(title, common) : plain(title)),
+        outro: message => (interactive ? clack.outro(message, common) : plain(message)),
+        step: message => (interactive ? clack.log.step(message, common) : plain(message)),
+        info: message => (interactive ? clack.log.info(message, common) : plain(message)),
+        warn: message => (interactive ? clack.log.warn(message, common) : plain(`warning: ${message}`)),
+        note: (message, title) => (interactive ? clack.note(message, title, common) : plain(title ? `${title}\n${message}` : message)),
+        spinner() {
+            if (interactive) {
+                const inner = clack.spinner(common);
+                return {
+                    start: message => inner.start(message),
+                    message: message => inner.message(message),
+                    stop: message => inner.stop(message),
+                    error: message => inner.error(message),
+                };
+            }
+            // A pipe is read after the fact: only the outcome of a step is worth a line.
+            let running = "";
+            return {
+                start: message => { running = message; },
+                message: message => { running = message; },
+                stop: message => plain(message ?? running),
+                error: message => plain(`error: ${message ?? running}`),
+            };
+        },
+        async select(message, choices) {
+            if (!choices.length)
+                throw new CliError("unexpected", `Nothing to choose for "${message}".`);
+            if (!interactive) {
+                throw new CliError("usage", `${message} needs a terminal to choose from ${choices.length} options.`, choices.map(c => c.label).join(", "));
+            }
+            // `Option<T>` is conditional on T being primitive, which an open generic cannot resolve.
+            const list = choices.map(c => ({ value: c.value, label: c.label, ...(c.hint ? { hint: c.hint } : {}) }));
+            const picked = choices.length >= AUTOCOMPLETE_FROM
+                ? await clack.autocomplete({ message, options: list, placeholder: "Type to filter", maxItems: AUTOCOMPLETE_FROM, ...common })
+                : await clack.select({ message, options: list, ...common });
+            return unwrap(picked);
+        },
+        async confirm(message, confirmOptions = {}) {
+            if (!interactive)
+                throw new CliError("usage", `${message} needs a terminal to answer; pass --yes to confirm non-interactively.`);
+            return unwrap(await clack.confirm({ message, initialValue: confirmOptions.initial ?? false, ...common }));
+        },
+        async text(message, textOptions = {}) {
+            if (!interactive) {
+                if (textOptions.initial !== undefined)
+                    return textOptions.initial;
+                throw new CliError("usage", `${message} needs a terminal to answer.`);
+            }
+            const answer = await clack.text({
+                message,
+                ...(textOptions.placeholder !== undefined ? { placeholder: textOptions.placeholder } : {}),
+                ...(textOptions.initial !== undefined ? { defaultValue: textOptions.initial, initialValue: textOptions.initial } : {}),
+                ...(textOptions.validate ? { validate: (value) => textOptions.validate?.(value ?? "") } : {}),
+                ...common,
+            });
+            return unwrap(answer);
+        },
+    };
+}
+/** Ctrl+C or Escape inside a prompt is the person's decision, reported with exit 130 like a signal. */
+function unwrap(value) {
+    if (clack.isCancel(value))
+        throw new CliError("cancelled", "Cancelled.");
+    return value;
+}

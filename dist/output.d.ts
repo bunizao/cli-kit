@@ -10,6 +10,10 @@ export declare function render(value: unknown, options: {
     format: OutputFormat;
     fields?: readonly string[];
     columns?: readonly [string, string][];
+    /** Terminal width the table has to fit into. Omitted means unlimited. */
+    width?: number;
+    /** Indent JSON. Readable on a terminal, wasted bytes in a pipe. */
+    pretty?: boolean;
 }): string;
 export declare function writeOutput(text: string, options: {
     output?: string;

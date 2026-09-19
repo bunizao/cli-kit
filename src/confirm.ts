@@ -1,17 +1,24 @@
-import { createInterface } from "node:readline/promises";
+import type { Writable } from "node:stream";
 
 import { CliError } from "./errors.js";
+import { createUi, type UiOptions } from "./ui.js";
 
 export interface MutationPlan {
   readonly summary: string;
 }
 
+/**
+ * The gate every mutating command passes through. `--dry-run` prints the plan and
+ * stops, `--yes` skips the question, and a pipe without `--yes` is an error rather
+ * than a hang. Only a person at a terminal is ever asked.
+ */
 export async function confirm(
   plan: MutationPlan,
-  options: { yes: boolean; dryRun: boolean; interactive: boolean },
+  options: { yes: boolean; dryRun: boolean; interactive: boolean } & Pick<UiOptions, "input" | "output">,
 ): Promise<boolean> {
+  const output: Writable = options.output ?? process.stderr;
   if (options.dryRun) {
-    process.stderr.write(`${plan.summary}\n`);
+    output.write(`${plan.summary}\n`);
     return false;
   }
   if (options.yes) return true;
@@ -19,12 +26,7 @@ export async function confirm(
     throw new CliError("usage", "Mutation requires --yes when stdin is not interactive.");
   }
 
-  process.stderr.write(`${plan.summary}\n`);
-  const prompt = createInterface({ input: process.stdin, output: process.stderr });
-  try {
-    const answer = await prompt.question("Continue? y/N ");
-    return answer.trim().toLowerCase() === "y";
-  } finally {
-    prompt.close();
-  }
+  const ui = createUi({ interactive: true, ...(options.input ? { input: options.input } : {}), output });
+  ui.note(plan.summary, "Plan");
+  return ui.confirm("Continue?");
 }

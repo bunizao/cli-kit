@@ -118,3 +118,25 @@ a major package release.
 The conformance suite is isolated under `conformance/`. Until all three CLIs have published their
 normalized releases, missing binaries are reported as skipped tests. Its CI workflow installs the
 published packages before running the suite.
+
+## Prompts and progress
+
+`createUi` gives every CLI the same interactive surface, drawn with `@clack/prompts` on
+stderr so `--json` output on stdout stays clean. It only prompts when both stdin and the
+output are terminals; in a pipe, log calls print plain completed lines, spinners print
+their outcome, and every prompt throws a `usage` error that says what to pass instead.
+
+```ts
+const ui = createUi();
+ui.intro("moodle submit");
+const unit = await ui.select("Which unit?", candidates.map((c) => ({ value: c.id, label: c.name, hint: c.code })));
+const spin = ui.spinner();
+spin.start("Uploading 2 files");
+spin.stop("Uploaded 2 files");
+ui.outro("Done");
+```
+
+`select` switches to type-to-filter above `AUTOCOMPLETE_FROM` choices. Ctrl+C inside a
+prompt throws a `cancelled` error (exit 130). `confirm(plan, options)` is built on the same
+layer and keeps its contract: `--dry-run` prints the plan, `--yes` skips the question, a pipe
+without `--yes` is a usage error.
