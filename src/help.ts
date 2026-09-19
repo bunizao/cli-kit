@@ -4,16 +4,19 @@ import { painter, type Paint } from "./color.js";
 
 const sections = new WeakMap<Command, string>();
 const sectionOrder = new WeakMap<Command, string[]>();
+const sectionRank = new WeakMap<Command, number>();
+let nextRank = 0;
 const exampleLines = new WeakMap<Command, readonly string[]>();
 const banners = new WeakMap<Command, string>();
 
 /**
  * List a subcommand under `title` in its parent's help instead of the one flat list.
- * Sections appear in the order they were first named, so the caller decides that
- * "Reading" precedes "Setup" however the commands were registered.
+ * Sections appear in the order they were first named and commands in the order they
+ * were placed, so the caller decides what comes first however the tree was registered.
  */
 export function helpSection(command: Command, title: string): Command {
   sections.set(command, title);
+  sectionRank.set(command, nextRank++);
   if (command.parent) {
     const order = sectionOrder.get(command.parent) ?? [];
     if (!order.includes(title)) sectionOrder.set(command.parent, [...order, title]);
@@ -97,7 +100,8 @@ function formatHelp(command: Command, helper: Help, paint: Paint, terminal: bool
   const commands = helper.visibleCommands(command).filter(child => command.commands.includes(child));
   const groups = new Map<string, Command[]>();
   for (const heading of sectionOrder.get(command) ?? []) groups.set(heading, []);
-  for (const child of commands) {
+  const placed = [...commands].sort((a, b) => (sectionRank.get(a) ?? Infinity) - (sectionRank.get(b) ?? Infinity));
+  for (const child of placed) {
     const heading = sections.get(child) ?? "Commands";
     groups.set(heading, [...(groups.get(heading) ?? []), child]);
   }

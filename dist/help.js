@@ -1,15 +1,18 @@
 import { painter } from "./color.js";
 const sections = new WeakMap();
 const sectionOrder = new WeakMap();
+const sectionRank = new WeakMap();
+let nextRank = 0;
 const exampleLines = new WeakMap();
 const banners = new WeakMap();
 /**
  * List a subcommand under `title` in its parent's help instead of the one flat list.
- * Sections appear in the order they were first named, so the caller decides that
- * "Reading" precedes "Setup" however the commands were registered.
+ * Sections appear in the order they were first named and commands in the order they
+ * were placed, so the caller decides what comes first however the tree was registered.
  */
 export function helpSection(command, title) {
     sections.set(command, title);
+    sectionRank.set(command, nextRank++);
     if (command.parent) {
         const order = sectionOrder.get(command.parent) ?? [];
         if (!order.includes(title))
@@ -82,7 +85,8 @@ function formatHelp(command, helper, paint, terminal) {
     const groups = new Map();
     for (const heading of sectionOrder.get(command) ?? [])
         groups.set(heading, []);
-    for (const child of commands) {
+    const placed = [...commands].sort((a, b) => (sectionRank.get(a) ?? Infinity) - (sectionRank.get(b) ?? Infinity));
+    for (const child of placed) {
         const heading = sections.get(child) ?? "Commands";
         groups.set(heading, [...(groups.get(heading) ?? []), child]);
     }

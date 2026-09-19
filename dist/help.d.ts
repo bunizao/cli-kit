@@ -1,8 +1,8 @@
 import type { Command, Help } from "commander";
 /**
  * List a subcommand under `title` in its parent's help instead of the one flat list.
- * Sections appear in the order they were first named, so the caller decides that
- * "Reading" precedes "Setup" however the commands were registered.
+ * Sections appear in the order they were first named and commands in the order they
+ * were placed, so the caller decides what comes first however the tree was registered.
  */
 export declare function helpSection(command: Command, title: string): Command;
 /** A few invocations shown under "Try" in the command's help; text after `  # ` renders as a comment. */
