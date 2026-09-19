@@ -1,5 +1,6 @@
 export * from "./arguments.js";
 export * from "./audience.js";
+export * from "./color.js";
 export * from "./confirm.js";
 export * from "./errors.js";
 export * from "./help.js";
