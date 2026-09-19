@@ -2,6 +2,7 @@ import type { Writable } from "node:stream";
 
 import * as clack from "@clack/prompts";
 
+import { isAgentEnvironment } from "./audience.js";
 import { CliError } from "./errors.js";
 
 /**
@@ -20,8 +21,12 @@ export interface UiOptions {
   readonly input?: NodeJS.ReadStream;
   /** Where prompts and progress draw. Defaults to `process.stderr` so `--json` stdout stays clean. */
   readonly output?: Writable;
-  /** Force the interactive or plain path instead of detecting it from the streams. */
+  /** Force the interactive or plain path instead of detecting it from the streams and environment. */
   readonly interactive?: boolean;
+  /** Environment consulted for agent markers. Defaults to `process.env`. */
+  readonly env?: NodeJS.ProcessEnv;
+  /** Aborting it cancels whichever prompt is open. */
+  readonly signal?: AbortSignal;
 }
 
 export interface Spinner {
@@ -52,6 +57,8 @@ export interface Ui {
   confirm(message: string, options?: { readonly initial?: boolean }): Promise<boolean>;
   /** One line of text. Without a terminal this returns `options.initial` or throws. */
   text(message: string, options?: { readonly placeholder?: string; readonly initial?: string; readonly validate?: (value: string) => string | undefined }): Promise<string>;
+  /** One secret, echoed as dots. Without a terminal this throws; callers offer a stdin flag instead. */
+  password(message: string): Promise<string>;
 }
 
 export const AUTOCOMPLETE_FROM = 8;
@@ -65,8 +72,9 @@ export const AUTOCOMPLETE_FROM = 8;
 export function createUi(options: UiOptions = {}): Ui {
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stderr;
-  const interactive = options.interactive ?? (Boolean(input.isTTY) && Boolean((output as Writable & { isTTY?: boolean }).isTTY));
-  const common = { input, output };
+  const interactive = options.interactive
+    ?? (Boolean(input.isTTY) && Boolean((output as Writable & { isTTY?: boolean }).isTTY) && !isAgentEnvironment(options.env));
+  const common = { input, output, ...(options.signal ? { signal: options.signal } : {}) };
   const plain = (text: string) => output.write(`${text}\n`);
 
   return {
@@ -129,6 +137,11 @@ export function createUi(options: UiOptions = {}): Ui {
         ...common,
       });
       return unwrap<string>(answer);
+    },
+
+    async password(message) {
+      if (!interactive) throw new CliError("usage", `${message} needs a terminal to enter a secret.`);
+      return unwrap<string>(await clack.password({ message, ...common }));
     },
   };
 }

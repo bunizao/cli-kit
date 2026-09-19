@@ -1,3 +1,4 @@
+export * from "./audience.js";
 export * from "./confirm.js";
 export * from "./errors.js";
 export * from "./nouns.js";

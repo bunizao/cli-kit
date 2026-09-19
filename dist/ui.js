@@ -1,4 +1,5 @@
 import * as clack from "@clack/prompts";
+import { isAgentEnvironment } from "./audience.js";
 import { CliError } from "./errors.js";
 export const AUTOCOMPLETE_FROM = 8;
 /**
@@ -10,8 +11,9 @@ export const AUTOCOMPLETE_FROM = 8;
 export function createUi(options = {}) {
     const input = options.input ?? process.stdin;
     const output = options.output ?? process.stderr;
-    const interactive = options.interactive ?? (Boolean(input.isTTY) && Boolean(output.isTTY));
-    const common = { input, output };
+    const interactive = options.interactive
+        ?? (Boolean(input.isTTY) && Boolean(output.isTTY) && !isAgentEnvironment(options.env));
+    const common = { input, output, ...(options.signal ? { signal: options.signal } : {}) };
     const plain = (text) => output.write(`${text}\n`);
     return {
         interactive,
@@ -72,6 +74,11 @@ export function createUi(options = {}) {
                 ...common,
             });
             return unwrap(answer);
+        },
+        async password(message) {
+            if (!interactive)
+                throw new CliError("usage", `${message} needs a terminal to enter a secret.`);
+            return unwrap(await clack.password({ message, ...common }));
         },
     };
 }

@@ -14,8 +14,12 @@ export interface UiOptions {
     readonly input?: NodeJS.ReadStream;
     /** Where prompts and progress draw. Defaults to `process.stderr` so `--json` stdout stays clean. */
     readonly output?: Writable;
-    /** Force the interactive or plain path instead of detecting it from the streams. */
+    /** Force the interactive or plain path instead of detecting it from the streams and environment. */
     readonly interactive?: boolean;
+    /** Environment consulted for agent markers. Defaults to `process.env`. */
+    readonly env?: NodeJS.ProcessEnv;
+    /** Aborting it cancels whichever prompt is open. */
+    readonly signal?: AbortSignal;
 }
 export interface Spinner {
     start(message: string): void;
@@ -50,6 +54,8 @@ export interface Ui {
         readonly initial?: string;
         readonly validate?: (value: string) => string | undefined;
     }): Promise<string>;
+    /** One secret, echoed as dots. Without a terminal this throws; callers offer a stdin flag instead. */
+    password(message: string): Promise<string>;
 }
 export declare const AUTOCOMPLETE_FROM = 8;
 /**

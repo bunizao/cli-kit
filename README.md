@@ -140,3 +140,15 @@ ui.outro("Done");
 prompt throws a `cancelled` error (exit 130). `confirm(plan, options)` is built on the same
 layer and keeps its contract: `--dry-run` prints the plan, `--yes` skips the question, a pipe
 without `--yes` is a usage error.
+
+## Human or agent
+
+`detectAudience({ stdin, stdout, env, format })` returns `"human"` only for a person at a
+terminal reading a table: both streams are TTYs, the format is not JSON or YAML, and none
+of `AGENT_ENV_VARS` (`CLI_AGENT`, `CLAUDECODE`, `CI`) is set. Everyone else is an agent and
+gets machine output, no prompts, and errors that name the flag to pass. `createUi` applies
+the same environment rule on its own, so an agent that allocates a pty still never sees a
+prompt. Agents that run commands in a terminal should export `CLI_AGENT=1`.
+
+`ui.password` masks a secret; without a terminal it throws so the caller can point at a
+`--token-stdin` style flag instead.
