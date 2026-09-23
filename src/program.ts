@@ -106,7 +106,8 @@ function describe(command: Command, noun?: string): CommandDescription {
     aliases: command.aliases(),
     description: command.description(),
     positionals: command.registeredArguments.map(describeArgument),
-    options: command.options.map(describeOption),
+    // Match help output: options created with .hideHelp() stay out of the description.
+    options: command.options.filter((option) => !option.hidden).map(describeOption),
     mutating: mutations.has(command),
     commands: command.commands.filter((child) => child.name() !== "help").map((child) => describe(child, currentNoun)),
   };

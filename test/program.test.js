@@ -62,6 +62,16 @@ test("commandsJson describes commands and marks mutations", () => {
   });
 });
 
+test("commandsJson leaves hidden options out", () => {
+  const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI" });
+  const list = program.command("units").command("list").option("--limit <n>", "Maximum rows");
+  list.addOption(list.createOption("--max <n>").hideHelp());
+
+  const [units] = commandsJson(program).commands;
+
+  assert.deepEqual(units.commands[0].options.map((option) => option.flags), ["--limit <n>"]);
+});
+
 test("commandsJson rejects a verb outside the contract", () => {
   const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
   program.command("units").command("destroy <unit>");
