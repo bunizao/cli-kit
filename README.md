@@ -187,8 +187,10 @@ spin.stop("Uploaded 2 files");
 ui.outro("Done");
 ```
 
-`select` switches to type-to-filter above `AUTOCOMPLETE_FROM` choices. Ctrl+C inside a
-prompt throws a `cancelled` error (exit 130). `confirm(plan, options)` is built on the same
+`select` switches to type-to-filter above `AUTOCOMPLETE_FROM` choices, or always with
+`{ search: true }`; every typed word must appear in the label or hint, in any order.
+`{ initial }` highlights a row. A multi-step picker passes `{ back: true }` and gets `BACK`
+when the person presses Escape. Ctrl+C inside a prompt throws a `cancelled` error (exit 130). `confirm(plan, options)` is built on the same
 layer and keeps its contract: `--dry-run` prints the plan, `--yes` skips the question, a pipe
 without `--yes` is a usage error.
 

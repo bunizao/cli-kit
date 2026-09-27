@@ -6,6 +6,8 @@ import * as clack from "@clack/prompts";
 import { isAgentEnvironment } from "./audience.js";
 import { colorEnabled, painter } from "./color.js";
 import { CliError } from "./errors.js";
+/** What `select` resolves when the person presses Escape on a prompt opened with `back: true`. */
+export const BACK = Symbol("cli-kit.back");
 export const AUTOCOMPLETE_FROM = 8;
 /**
  * Every CLI in the family draws the same way: prompts, steps and spinners on stderr
@@ -57,7 +59,7 @@ export function createUi(options = {}) {
                 error: message => plain(`error: ${message ?? running}`),
             };
         },
-        async select(message, choices) {
+        async select(message, choices, selectOptions = {}) {
             if (!choices.length)
                 throw new CliError("unexpected", `Nothing to choose for "${message}".`);
             if (!interactive) {
@@ -65,10 +67,23 @@ export function createUi(options = {}) {
             }
             // `Option<T>` is conditional on T being primitive, which an open generic cannot resolve.
             const list = choices.map(c => ({ value: c.value, label: c.label, ...(c.hint ? { hint: c.hint } : {}) }));
-            const picked = choices.length >= AUTOCOMPLETE_FROM
-                ? await clack.autocomplete({ message, options: list, placeholder: "Type to filter", maxItems: AUTOCOMPLETE_FROM, ...common })
-                : await clack.select({ message, options: list, ...common });
-            return unwrap(picked);
+            const initial = selectOptions.initial !== undefined ? { initialValue: selectOptions.initial } : {};
+            // Clack reports Escape and Ctrl+C as the same cancel, so the key itself tells them apart.
+            let escaped = false;
+            const onKey = (_, key) => { escaped = key?.name === "escape"; };
+            if (selectOptions.back)
+                input.on("keypress", onKey);
+            try {
+                const picked = selectOptions.search || choices.length >= AUTOCOMPLETE_FROM
+                    ? await clack.autocomplete({ message, options: list, placeholder: "Type to filter", maxItems: AUTOCOMPLETE_FROM, filter: matchesWords, ...initial, ...common })
+                    : await clack.select({ message, options: list, ...initial, ...common });
+                if (selectOptions.back && escaped && clack.isCancel(picked))
+                    return BACK;
+                return unwrap(picked);
+            }
+            finally {
+                input.off("keypress", onKey);
+            }
         },
         async confirm(message, confirmOptions = {}) {
             if (!interactive)
@@ -116,6 +131,11 @@ export function createUi(options = {}) {
             }
         },
     };
+}
+// "2086 week 5" should find "FIT2086 · Week 5": each typed word on its own, anywhere.
+function matchesWords(search, option) {
+    const text = `${option.label ?? ""} ${option.hint ?? ""} ${typeof option.value === "string" || typeof option.value === "number" ? option.value : ""}`.toLowerCase();
+    return search.toLowerCase().split(/\s+/u).filter(Boolean).every(word => text.includes(word));
 }
 /** Ctrl+C or Escape inside a prompt is the person's decision, reported with exit 130 like a signal. */
 function unwrap(value) {

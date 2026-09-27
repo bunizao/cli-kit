@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { PassThrough } from "node:stream";
 import test from "node:test";
 
-import { AUTOCOMPLETE_FROM, CliError, confirm, createUi } from "../dist/index.js";
+import { AUTOCOMPLETE_FROM, BACK, CliError, confirm, createUi } from "../dist/index.js";
 
 const DOWN = "[B";
 const ENTER = "\r";
@@ -145,4 +145,36 @@ test("banner paints the art for a person and leaves a pipe the tagline alone", (
   plain.banner(art, "Demo from the command line.");
   plain.banner(art);
   assert.equal(readPlain(), "Demo from the command line.\n");
+});
+
+test("select searches every typed word and preselects the initial row", async () => {
+  const input = new PassThrough();
+  const ui = createUi({ input, output: new PassThrough(), interactive: true });
+  const choices = [
+    { value: "a", label: "Week 4", hint: "ALG1001" },
+    { value: "b", label: "Week 5", hint: "ALG1001" },
+    { value: "c", label: "Week 5", hint: "BIO2002" },
+  ];
+
+  press(input, "1001 week 5");
+  press(input, ENTER, 30);
+  assert.equal(await ui.select("Section", choices, { search: true }), "b");
+
+  press(input, ENTER);
+  assert.equal(await ui.select("Section", choices, { initial: "c" }), "c");
+});
+
+test("escape goes back on a back-enabled select and ctrl+c still cancels", async () => {
+  const input = new PassThrough();
+  const ui = createUi({ input, output: new PassThrough(), interactive: true });
+  const choices = [{ value: 1, label: "Algebra" }, { value: 2, label: "Biology" }];
+
+  press(input, "\u001b");
+  assert.equal(await ui.select("Unit", choices, { back: true }), BACK);
+
+  press(input, "\u001b");
+  await assert.rejects(() => ui.select("Unit", choices), (error) => error instanceof CliError && error.code === "cancelled");
+
+  press(input, CTRL_C);
+  await assert.rejects(() => ui.select("Unit", choices, { back: true }), (error) => error instanceof CliError && error.code === "cancelled");
 });

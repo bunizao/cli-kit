@@ -21,6 +21,21 @@ export interface Choice<T> {
   readonly hint?: string;
 }
 
+/** What `select` resolves when the person presses Escape on a prompt opened with `back: true`. */
+export const BACK: unique symbol = Symbol("cli-kit.back");
+
+export interface SelectOptions<T> {
+  /** Type-to-filter at any length; a short list still wants it when the person knows the name. */
+  readonly search?: boolean;
+  /** The row highlighted when the list opens. */
+  readonly initial?: T;
+  /**
+   * Escape resolves `BACK` instead of cancelling, so a multi-step picker can return to the
+   * previous step. Ctrl+C still cancels.
+   */
+  readonly back?: boolean;
+}
+
 export interface UiOptions {
   /** Keyboard input. Defaults to `process.stdin`. */
   readonly input?: NodeJS.ReadStream;
@@ -61,10 +76,12 @@ export interface Ui {
   spinner(): Spinner;
   /**
    * Let the person pick one row. Above `AUTOCOMPLETE_FROM` choices the list becomes
-   * type-to-filter, because arrowing through thirty forum threads is not a picker.
+   * type-to-filter, because arrowing through thirty forum threads is not a picker. The
+   * filter matches every typed word anywhere in the label or hint, in any order.
    * Without a terminal this throws a usage error that lists the choices.
    */
-  select<T>(message: string, choices: readonly Choice<T>[]): Promise<T>;
+  select<T>(message: string, choices: readonly Choice<T>[], options: SelectOptions<T> & { readonly back: true }): Promise<T | typeof BACK>;
+  select<T>(message: string, choices: readonly Choice<T>[], options?: SelectOptions<T>): Promise<T>;
   /** Yes or no. Without a terminal this throws a usage error. */
   confirm(message: string, options?: { readonly initial?: boolean }): Promise<boolean>;
   /** One line of text. Without a terminal this returns `options.initial` or throws. */
@@ -134,17 +151,27 @@ export function createUi(options: UiOptions = {}): Ui {
       };
     },
 
-    async select<T>(message: string, choices: readonly Choice<T>[]): Promise<T> {
+    async select<T>(message: string, choices: readonly Choice<T>[], selectOptions: SelectOptions<T> = {}): Promise<T | typeof BACK> {
       if (!choices.length) throw new CliError("unexpected", `Nothing to choose for "${message}".`);
       if (!interactive) {
         throw new CliError("usage", `${message} needs a terminal to choose from ${choices.length} options.`, choices.map(c => c.label).join(", "));
       }
       // `Option<T>` is conditional on T being primitive, which an open generic cannot resolve.
       const list = choices.map(c => ({ value: c.value, label: c.label, ...(c.hint ? { hint: c.hint } : {}) })) as unknown as clack.Option<T>[];
-      const picked = choices.length >= AUTOCOMPLETE_FROM
-        ? await clack.autocomplete<T>({ message, options: list, placeholder: "Type to filter", maxItems: AUTOCOMPLETE_FROM, ...common })
-        : await clack.select<T>({ message, options: list, ...common });
-      return unwrap<T>(picked);
+      const initial = selectOptions.initial !== undefined ? { initialValue: selectOptions.initial } : {};
+      // Clack reports Escape and Ctrl+C as the same cancel, so the key itself tells them apart.
+      let escaped = false;
+      const onKey = (_: unknown, key?: { name?: string }) => { escaped = key?.name === "escape"; };
+      if (selectOptions.back) input.on("keypress", onKey);
+      try {
+        const picked = selectOptions.search || choices.length >= AUTOCOMPLETE_FROM
+          ? await clack.autocomplete<T>({ message, options: list, placeholder: "Type to filter", maxItems: AUTOCOMPLETE_FROM, filter: matchesWords, ...initial, ...common })
+          : await clack.select<T>({ message, options: list, ...initial, ...common });
+        if (selectOptions.back && escaped && clack.isCancel(picked)) return BACK;
+        return unwrap<T>(picked);
+      } finally {
+        input.off("keypress", onKey);
+      }
     },
 
     async confirm(message, confirmOptions = {}) {
@@ -190,6 +217,12 @@ export function createUi(options: UiOptions = {}): Ui {
       }
     },
   };
+}
+
+// "2086 week 5" should find "FIT2086 · Week 5": each typed word on its own, anywhere.
+function matchesWords(search: string, option: { label?: string; hint?: string; value: unknown }): boolean {
+  const text = `${option.label ?? ""} ${option.hint ?? ""} ${typeof option.value === "string" || typeof option.value === "number" ? option.value : ""}`.toLowerCase();
+  return search.toLowerCase().split(/\s+/u).filter(Boolean).every(word => text.includes(word));
 }
 
 /** Ctrl+C or Escape inside a prompt is the person's decision, reported with exit 130 like a signal. */

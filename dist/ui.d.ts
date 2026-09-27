@@ -9,6 +9,19 @@ export interface Choice<T> {
     readonly label: string;
     readonly hint?: string;
 }
+/** What `select` resolves when the person presses Escape on a prompt opened with `back: true`. */
+export declare const BACK: unique symbol;
+export interface SelectOptions<T> {
+    /** Type-to-filter at any length; a short list still wants it when the person knows the name. */
+    readonly search?: boolean;
+    /** The row highlighted when the list opens. */
+    readonly initial?: T;
+    /**
+     * Escape resolves `BACK` instead of cancelling, so a multi-step picker can return to the
+     * previous step. Ctrl+C still cancels.
+     */
+    readonly back?: boolean;
+}
 export interface UiOptions {
     /** Keyboard input. Defaults to `process.stdin`. */
     readonly input?: NodeJS.ReadStream;
@@ -47,10 +60,14 @@ export interface Ui {
     spinner(): Spinner;
     /**
      * Let the person pick one row. Above `AUTOCOMPLETE_FROM` choices the list becomes
-     * type-to-filter, because arrowing through thirty forum threads is not a picker.
+     * type-to-filter, because arrowing through thirty forum threads is not a picker. The
+     * filter matches every typed word anywhere in the label or hint, in any order.
      * Without a terminal this throws a usage error that lists the choices.
      */
-    select<T>(message: string, choices: readonly Choice<T>[]): Promise<T>;
+    select<T>(message: string, choices: readonly Choice<T>[], options: SelectOptions<T> & {
+        readonly back: true;
+    }): Promise<T | typeof BACK>;
+    select<T>(message: string, choices: readonly Choice<T>[], options?: SelectOptions<T>): Promise<T>;
     /** Yes or no. Without a terminal this throws a usage error. */
     confirm(message: string, options?: {
         readonly initial?: boolean;
