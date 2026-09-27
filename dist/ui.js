@@ -20,8 +20,15 @@ export function createUi(options = {}) {
     const output = options.output ?? process.stderr;
     const interactive = options.interactive
         ?? (Boolean(input.isTTY) && Boolean(output.isTTY) && !isAgentEnvironment(options.env));
-    const common = { input, output, ...(options.signal ? { signal: options.signal } : {}) };
-    const plain = (text) => output.write(`${text}\n`);
+    // Escape erases the abandoned step and the answer above it, so going back looks like
+    // the earlier question was never answered. That needs to know how many rows each prompt
+    // drew; clack redraws with relative moves, so counting newlines and cursor-up/down
+    // sequences written through the ui gives it.
+    let row = 0;
+    const answered = [];
+    const drawn = interactive ? trackRows(output, delta => { row += delta; }) : output;
+    const common = { input, output: drawn, ...(options.signal ? { signal: options.signal } : {}) };
+    const plain = (text) => drawn.write(`${text}\n`);
     const paint = painter(colorEnabled(output, options.env));
     return {
         interactive,
@@ -32,7 +39,7 @@ export function createUi(options = {}) {
                 return;
             }
             const lines = art.replace(/^\n+|\s+$/gu, "").split("\n").map(line => paint("cyan", line));
-            output.write(`${lines.join("\n")}\n${tagline ? `${paint("dim", tagline)}\n` : ""}\n`);
+            drawn.write(`${lines.join("\n")}\n${tagline ? `${paint("dim", tagline)}\n` : ""}\n`);
         },
         intro: title => (interactive ? clack.intro(title, common) : plain(title)),
         outro: message => (interactive ? clack.outro(message, common) : plain(message)),
@@ -75,17 +82,27 @@ export function createUi(options = {}) {
             const onKey = (_, key) => { escaped = key?.name === "escape"; };
             if (selectOptions.back)
                 input.on("keypress", onKey);
+            const start = row;
+            let picked;
             try {
-                const picked = selectOptions.search || choices.length >= AUTOCOMPLETE_FROM
+                picked = selectOptions.search || choices.length >= AUTOCOMPLETE_FROM
                     ? await clack.autocomplete({ message, options: list, placeholder: "Type to filter", maxItems: AUTOCOMPLETE_FROM, filter: matchesWords, ...initial, ...common })
                     : await clack.select({ message, options: list, ...initial, ...common });
-                if (selectOptions.back && escaped && clack.isCancel(picked))
-                    return BACK;
-                return unwrap(picked);
             }
             finally {
                 input.off("keypress", onKey);
             }
+            if (selectOptions.back && escaped && clack.isCancel(picked)) {
+                // The answer above is erased too only when nothing was drawn between it and this step.
+                const previous = answered.at(-1)?.end === start ? answered.pop() : undefined;
+                const up = row - (previous?.start ?? start);
+                if (up > 0)
+                    drawn.write(`\u001b[${up}A\r\u001b[J`);
+                return BACK;
+            }
+            const value = unwrap(picked);
+            answered.push({ start, end: row });
+            return value;
         },
         async confirm(message, confirmOptions = {}) {
             if (!interactive)
@@ -134,10 +151,31 @@ export function createUi(options = {}) {
         },
     };
 }
-// "2086 week 5" should find "FIT2086 · Week 5": each typed word on its own, anywhere.
+// "2086 week 5" should find "FIT2086 · Week 5": each typed word on its own, anywhere in
+// the label or hint. A number starts a run of digits, so "5" finds "Week 5" and "2086"
+// finds "FIT2086", but "5" does not find "Week 15".
 function matchesWords(search, option) {
-    const text = `${option.label ?? ""} ${option.hint ?? ""} ${typeof option.value === "string" || typeof option.value === "number" ? option.value : ""}`.toLowerCase();
-    return search.toLowerCase().split(/\s+/u).filter(Boolean).every(word => text.includes(word));
+    const text = `${option.label ?? ""} ${option.hint ?? ""}`.toLowerCase();
+    return search.toLowerCase().split(/\s+/u).filter(Boolean).every(word => /^\d+$/u.test(word)
+        ? new RegExp(`(?<!\\d)${word}`, "u").test(text)
+        : text.includes(word));
+}
+// Everything else about the stream (columns, isTTY, resize events) is the real one.
+function trackRows(output, moved) {
+    const write = (chunk, ...rest) => {
+        for (const match of String(chunk).matchAll(/\u001b\[(\d*)([AB])|\n/gu)) {
+            moved(match[0] === "\n" ? 1 : (match[2] === "A" ? -1 : 1) * Number(match[1] || 1));
+        }
+        return output.write(chunk, ...rest);
+    };
+    return new Proxy(output, {
+        get(target, property) {
+            if (property === "write")
+                return write;
+            const value = Reflect.get(target, property, target);
+            return typeof value === "function" ? value.bind(target) : value;
+        },
+    });
 }
 /** Ctrl+C or Escape inside a prompt is the person's decision, reported with exit 130 like a signal. */
 function unwrap(value) {

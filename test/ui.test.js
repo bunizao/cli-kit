@@ -156,12 +156,46 @@ test("select searches every typed word and preselects the initial row", async ()
     { value: "c", label: "Week 5", hint: "BIO2002" },
   ];
 
+  press(input, "5");
+  press(input, ENTER, 30);
+  assert.equal(await ui.select("Section", [{ value: "x", label: "Week 15" }, ...choices], { search: true }), "b");
+
   press(input, "1001 week 5");
   press(input, ENTER, 30);
   assert.equal(await ui.select("Section", choices, { search: true }), "b");
 
   press(input, ENTER);
   assert.equal(await ui.select("Section", choices, { initial: "c" }), "c");
+});
+
+test("escape erases the abandoned step and the answer above it", async () => {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  const read = collect(output);
+  const ui = createUi({ input, output, interactive: true });
+  const choices = [{ value: 1, label: "Algebra" }, { value: 2, label: "Biology" }];
+
+  press(input, ENTER);
+  assert.equal(await ui.select("Unit", choices), 1);
+  const before = read().length;
+  press(input, "\u001b");
+  assert.equal(await ui.select("Section", choices, { back: true }), BACK);
+  // Moving up exactly as many rows as both prompts drew lands where the first one began.
+  const drawn = read();
+  const erase = drawn.slice(before).match(/\u001b\[(\d+)A\r\u001b\[J$/u);
+  assert.ok(erase, "ends with an erase back to the first prompt");
+  const rows = [...drawn.slice(0, drawn.length - erase[0].length).matchAll(/\u001b\[(\d*)([AB])|\n/gu)]
+    .reduce((sum, m) => sum + (m[0] === "\n" ? 1 : (m[2] === "A" ? -1 : 1) * Number(m[1] || 1)), 0);
+  assert.equal(Number(erase[1]), rows);
+
+  // Something drawn in between keeps the earlier answer on screen.
+  press(input, ENTER);
+  await ui.select("Unit", choices);
+  ui.warn("Nothing here");
+  const mark = read().length;
+  press(input, "\u001b");
+  await ui.select("Section", choices, { back: true });
+  assert.ok(Number(read().slice(mark).match(/\u001b\[(\d+)A\r\u001b\[J$/u)[1]) < rows);
 });
 
 test("escape goes back on a back-enabled select and ctrl+c still cancels", async () => {
