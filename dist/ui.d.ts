@@ -43,6 +43,8 @@ export interface Spinner {
     /** End the step and leave `message` (or the last running text) as the permanent line. */
     stop(message?: string): void;
     error(message?: string): void;
+    /** End the step and erase it, for progress whose outcome is printed elsewhere. */
+    clear(): void;
 }
 export interface Ui {
     readonly interactive: boolean;

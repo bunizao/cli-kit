@@ -48,6 +48,7 @@ export function createUi(options = {}) {
                     message: message => inner.message(message),
                     stop: message => inner.stop(message),
                     error: message => inner.error(message),
+                    clear: () => inner.clear(),
                 };
             }
             // A pipe is read after the fact: only the outcome of a step is worth a line.
@@ -57,6 +58,7 @@ export function createUi(options = {}) {
                 message: message => { running = message; },
                 stop: message => plain(message ?? running),
                 error: message => plain(`error: ${message ?? running}`),
+                clear: () => { running = ""; },
             };
         },
         async select(message, choices, selectOptions = {}) {

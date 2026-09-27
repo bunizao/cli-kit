@@ -58,6 +58,8 @@ export interface Spinner {
   /** End the step and leave `message` (or the last running text) as the permanent line. */
   stop(message?: string): void;
   error(message?: string): void;
+  /** End the step and erase it, for progress whose outcome is printed elsewhere. */
+  clear(): void;
 }
 
 export interface Ui {
@@ -139,6 +141,7 @@ export function createUi(options: UiOptions = {}): Ui {
           message: message => inner.message(message),
           stop: message => inner.stop(message),
           error: message => inner.error(message),
+          clear: () => inner.clear(),
         };
       }
       // A pipe is read after the fact: only the outcome of a step is worth a line.
@@ -148,6 +151,7 @@ export function createUi(options: UiOptions = {}): Ui {
         message: message => { running = message; },
         stop: message => plain(message ?? running),
         error: message => plain(`error: ${message ?? running}`),
+        clear: () => { running = ""; },
       };
     },
 
