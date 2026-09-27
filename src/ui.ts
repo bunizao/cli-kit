@@ -143,12 +143,29 @@ export function createUi(options: UiOptions = {}): Ui {
     spinner() {
       if (interactive) {
         const inner = clack.spinner(common);
+        // Clack's spinner holds stdin in raw mode and answers Ctrl+C with process.exit(0),
+        // which skips the caller's cleanup and leaves half-written files behind. Handing
+        // the key back to the terminal makes it a real SIGINT: the spinner erases itself,
+        // the CLI's own handler runs, and a CLI without one still dies as Ctrl+C always has.
+        const onInterrupt = () => {
+          process.off("SIGINT", onInterrupt);
+          inner.clear();
+          if (!process.listenerCount("SIGINT")) process.kill(process.pid, "SIGINT");
+        };
+        const end = (finish: () => void) => {
+          process.off("SIGINT", onInterrupt);
+          finish();
+        };
         return {
-          start: message => inner.start(message),
+          start: message => {
+            inner.start(message);
+            if (process.stdin.isTTY) process.stdin.setRawMode(false);
+            process.prependListener("SIGINT", onInterrupt);
+          },
           message: message => inner.message(message),
-          stop: message => inner.stop(message),
-          error: message => inner.error(message),
-          clear: () => inner.clear(),
+          stop: message => end(() => inner.stop(message)),
+          error: message => end(() => inner.error(message)),
+          clear: () => end(() => inner.clear()),
         };
       }
       // A pipe is read after the fact: only the outcome of a step is worth a line.

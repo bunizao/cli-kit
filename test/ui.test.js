@@ -48,6 +48,39 @@ test("plain path writes completed lines and never prompts", async () => {
   assert.equal(await ui.text("Site URL", { initial: "https://example.edu" }), "https://example.edu");
 });
 
+test("ctrl+c during a spinner reaches the CLI's own SIGINT handler", () => {
+  const output = new PassThrough();
+  const ui = createUi({ input: new PassThrough(), output, interactive: true });
+  const kill = process.kill;
+  const killed = [];
+  process.kill = (pid, signal) => { killed.push(signal); };
+  try {
+    let handled = 0;
+    const onInterrupt = () => { handled++; };
+    process.once("SIGINT", onInterrupt);
+    const spin = ui.spinner();
+    spin.start("downloading");
+    process.emit("SIGINT", "SIGINT");
+    assert.equal(handled, 1);
+    assert.deepEqual(killed, []);
+    assert.equal(process.listenerCount("SIGINT"), 0);
+
+    // Without a handler of the CLI's own, the signal is raised again so the process dies.
+    const bare = ui.spinner();
+    bare.start("uploading");
+    process.emit("SIGINT", "SIGINT");
+    assert.deepEqual(killed, ["SIGINT"]);
+    assert.equal(process.listenerCount("SIGINT"), 0);
+
+    const done = ui.spinner();
+    done.start("deploying");
+    done.stop("deployed");
+    assert.equal(process.listenerCount("SIGINT"), 0);
+  } finally {
+    process.kill = kill;
+  }
+});
+
 test("detects the plain path from the streams", () => {
   assert.equal(createUi({ input: new PassThrough(), output: new PassThrough() }).interactive, false);
 });
