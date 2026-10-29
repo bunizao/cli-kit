@@ -1,0 +1,118 @@
+[
+  {
+    "query": "whats due for me this week across all my units? i keep forgetting the quiz deadlines",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "can you grab the week 8 lecture slides for algorithms and put them in ~/uni/algorithms",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "did my marks for assignment 2 in databases come back yet",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "any new announcements in my units since monday? the lecturer said something about the exam room changing",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "submit ~/Downloads/a2_report.pdf to the assignment 2 dropbox for discrete maths, save it as a draft only, don't finalise",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "i think my tutor messaged me on moodle yesterday, can you check",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "what did i get wrong on the week 5 quiz? i want to see the correct answers and feedback",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "show me the rubric feedback the marker left on my academic writing essay",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "is the intro programming workshop page for week 6 up yet",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "pull my grades for this semester and work out my running average in academic writing",
+    "expected": "moodle-cli"
+  },
+  {
+    "query": "which of my ontrack tasks are overdue for intro programming",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "what does task 3.1P actually ask for, i havent read the sheet",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "did my tutor reply to my 2.1P submission? they said it needed fixes",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "mark 4.2C as working on it",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "upload ~/code/task5/main.py and the screenshot to 5.1P and send it for feedback",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "how far am i from a distinction in OO design, which credit tasks are left",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "tell my tutor on 3.3D that i've fixed the loop bug and resubmitted",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "download all the task resources for data structures so i can work offline on the train",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "my target grade is HD, which tasks haven't been signed off yet",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "doubtfire says resubmit on 6.1P, what exactly did the tutor say",
+    "expected": "ontrack-cli"
+  },
+  {
+    "query": "has anyone on the ed forum asked about the ambiguity in the assignment 1 spec for algorithms",
+    "expected": "edstem-cli"
+  },
+  {
+    "query": "catch me up on what i missed in the databases discussion board this week",
+    "expected": "edstem-cli"
+  },
+  {
+    "query": "open the week 4 lesson on ed and tell me which slides i still haven't finished",
+    "expected": "edstem-cli"
+  },
+  {
+    "query": "search ed for posts about the segfault in the A2 starter code",
+    "expected": "edstem-cli"
+  },
+  {
+    "query": "explain how moodle plugins are written in PHP, I want to build one for my club's website",
+    "expected": "none"
+  },
+  {
+    "query": "draft an email to my lecturer asking for a one week extension on assignment 2, I was sick",
+    "expected": "none"
+  },
+  {
+    "query": "i got 72, 65 and 80 on three assessments worth 20/30/50 percent, what's my weighted mark",
+    "expected": "none"
+  },
+  {
+    "query": "set up a local doubtfire dev instance with docker so I can contribute to the open source project",
+    "expected": "none"
+  },
+  {
+    "query": "make me a study timetable for exam period, I have 4 exams starting june 3",
+    "expected": "none"
+  }
+]

@@ -3,3 +3,4 @@ conformance/node_modules/
 *.tgz
 .DS_Store
 .playwright-mcp/
+trigger-results.json

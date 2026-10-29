@@ -262,6 +262,32 @@ An MCP server that runs on Cloudflare Workers imports `toolDescription` from
 a renamed noun or verb, a removed option, or the wrong binary name. Call it from the CLI's tests
 so the skill and the MCP descriptions cannot drift from the command tree.
 
+### Trigger evals
+
+`evals/trigger.mjs` checks whether the descriptions route requests to the right skill. It puts
+every sibling skill in one Codex workspace, so they compete as they do for a student who has all
+three installed. A skill that steals its sibling's requests looks like the sibling undertriggering
+when either is tested alone. For each query it records which `skills/<name>/` Codex opens first.
+
+```bash
+node evals/trigger.mjs \
+  --skill ../moodle-cli/skills/moodle-cli \
+  --skill ../ontrack-cli/skills/ontrack-cli \
+  --skill ../edstem-cli/skills/edstem-cli \
+  --runs 3
+```
+
+- The folder name is the skill name. `--pool` defaults to `evals/trigger-pool.json`: 29
+  requests, each with the skill it should reach or `none`. `--model` defaults to Codex's configured
+  model. `--out` keeps every run's pick and first command.
+- Each Codex run is killed at its first command, and each skill's binary (`moodle`, `ontrack`,
+  `edstem`) is a failing stub first on `PATH`, so nothing reaches a real account. `HOME` is a
+  temporary folder that hides the user's own skills; `CODEX_HOME` keeps the sign-in.
+- A run costs about 16k input tokens, so the default 29 × 3 is about 1.4M. Results move by about
+  one run per query between passes, so compare changes across three runs, not one.
+- This measures Codex, not Claude. Claude Code reads the same folder layout and frontmatter, but
+  its routing can differ.
+
 ## Prompts and progress
 
 `createUi` gives every CLI the same interactive surface, drawn with `@clack/prompts` on
