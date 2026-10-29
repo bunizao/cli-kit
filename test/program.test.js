@@ -5,20 +5,20 @@ import { commandsJson, createProgram, mutating } from "../dist/index.js";
 
 test("commandsJson describes commands and marks mutations", () => {
   const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI" });
-  const units = program.command("units").alias("courses");
-  units.command("list").option("--state <state>", "Filter state").addOption(
-    units.createOption("--kind <kind>", "Filter kind").choices(["core", "elective"]),
+  const tasks = program.command("tasks").alias("assignments");
+  tasks.command("list").option("--state <state>", "Filter state").addOption(
+    tasks.createOption("--kind <kind>", "Filter kind").choices(["core", "elective"]),
   );
-  mutating(units.command("set <unit> <state>").description("Change state"));
+  mutating(tasks.command("set <task> <state>").description("Change state"));
 
   const value = commandsJson(program);
 
   assert.equal(value.name, "demo");
   assert.equal(value.version, "1.2.3");
   assert.deepEqual(value.commands[0], {
-    name: "units",
-    noun: "units",
-    aliases: ["courses"],
+    name: "tasks",
+    noun: "tasks",
+    aliases: ["assignments"],
     description: "",
     positionals: [],
     options: [],
@@ -26,7 +26,7 @@ test("commandsJson describes commands and marks mutations", () => {
     commands: [
       {
         name: "list",
-        noun: "units",
+        noun: "tasks",
         verb: "list",
         aliases: [],
         description: "",
@@ -46,12 +46,12 @@ test("commandsJson describes commands and marks mutations", () => {
       },
       {
         name: "set",
-        noun: "units",
+        noun: "tasks",
         verb: "set",
         aliases: [],
         description: "Change state",
         positionals: [
-          { name: "unit", description: "", required: true, variadic: false },
+          { name: "task", description: "", required: true, variadic: false },
           { name: "state", description: "", required: true, variadic: false },
         ],
         options: [],
@@ -64,19 +64,41 @@ test("commandsJson describes commands and marks mutations", () => {
 
 test("commandsJson leaves hidden options out", () => {
   const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI" });
-  const list = program.command("units").command("list").option("--limit <n>", "Maximum rows");
+  const list = program.command("tasks").command("list").option("--limit <n>", "Maximum rows");
   list.addOption(list.createOption("--max <n>").hideHelp());
 
-  const [units] = commandsJson(program).commands;
+  const [tasks] = commandsJson(program).commands;
 
-  assert.deepEqual(units.commands[0].options.map((option) => option.flags), ["--limit <n>"]);
+  assert.deepEqual(tasks.commands[0].options.map((option) => option.flags), ["--limit <n>"]);
 });
 
 test("commandsJson rejects a verb outside the contract", () => {
   const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
-  program.command("units").command("destroy <unit>");
+  program.command("tasks").command("destroy <task>");
 
   assert.throws(() => commandsJson(program), /Unsupported verb "destroy"/);
+});
+
+test("commandsJson accepts shared nouns under their canonical names", () => {
+  const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
+  program.command("courses").aliases(["units", "projects"]).command("list");
+  program.command("grades").command("list [course]");
+
+  assert.deepEqual(commandsJson(program).commands.map((command) => command.name), ["courses", "grades"]);
+});
+
+test("commandsJson rejects a shared alias used as the command name", () => {
+  const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
+  program.command("units").alias("courses").command("list");
+
+  assert.throws(() => commandsJson(program), /Noun "units" is an alias; name the command "courses"/);
+});
+
+test("commandsJson rejects a contract verb a shared noun does not offer", () => {
+  const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
+  program.command("grades").command("set <grade>");
+
+  assert.throws(() => commandsJson(program), /Unsupported verb "set" on shared noun "grades"/);
 });
 
 test("commandsJson rejects an unknown action in an exceptional group", () => {

@@ -2,10 +2,12 @@ import { Command, type Argument, type Option } from "commander";
 
 import { colorEnabled } from "./color.js";
 import { styledHelp } from "./help.js";
+import { SHARED_NOUNS, type NounSpec } from "./nouns.js";
 
 export const VERBS = ["list", "show", "read", "get", "search", "send", "submit", "set", "mark-read"] as const;
 
 const VERB_SET = new Set<string>(VERBS);
+const SHARED: readonly NounSpec[] = Object.values(SHARED_NOUNS);
 const mutations = new WeakSet<Command>();
 const ACTION_GROUPS = new Set(["auth", "skills"]);
 const ACTIONS: Readonly<Record<string, ReadonlySet<string>>> = {
@@ -95,8 +97,16 @@ function describe(command: Command, noun?: string): CommandDescription {
   if (noun && ACTION_GROUPS.has(noun) && !ACTIONS[noun]?.has(command.name())) {
     throw new Error(`Unsupported action "${command.name()}" on group "${noun}".`);
   }
+  const canonical = noun ? undefined : SHARED.find((spec) => spec.aliases?.includes(currentNoun));
+  if (canonical) {
+    throw new Error(`Noun "${currentNoun}" is an alias; name the command "${canonical.name}".`);
+  }
   if (verb && !VERB_SET.has(verb)) {
     throw new Error(`Unsupported verb "${verb}" on noun "${noun}".`);
+  }
+  const shared = SHARED.find((spec) => spec.name === noun);
+  if (verb && shared && !shared.verbs.includes(verb)) {
+    throw new Error(`Unsupported verb "${verb}" on shared noun "${noun}".`);
   }
 
   return {

@@ -26,6 +26,7 @@ import {
   createProgram,
   insertDefaultVerb,
   mutating,
+  SHARED_NOUNS,
   type NounSpec,
 } from "@bunizao/cli-kit";
 
@@ -35,17 +36,19 @@ const program = createProgram({
   description: "Example CLI",
 });
 
-const units = program.command("units").aliases(["courses", "projects"]);
-units.command("list").action(listUnits);
-units.command("show <unit>").action(showUnit);
-mutating(units.command("set <unit> <state>")).action(setUnitState);
+const courses = program.command("courses").aliases(["units", "projects"]);
+courses.command("list").action(listCourses);
+courses.command("show <course>").action(showCourse);
+const tasks = program.command("tasks");
+tasks.command("list <course>").action(listTasks);
+mutating(tasks.command("set <course> <task> <state>")).action(setTaskState);
 
 const nouns: readonly NounSpec[] = [
+  SHARED_NOUNS.courses,
   {
-    name: "units",
-    aliases: ["courses", "projects"],
-    verbs: ["list", "show", "set"],
-    defaultByArity: { 0: "list", 1: "show" },
+    name: "tasks",
+    verbs: ["list", "set"],
+    defaultByArity: { 1: "list" },
     valueFlags: [],
   },
 ];
@@ -163,8 +166,29 @@ aliases, positional arguments, options, enum values, nested commands, and `mutat
 commands at noun depth must use a verb exported in `VERBS`; unsupported verbs throw. `auth` and
 `skills` are action groups rather than domain nouns and are not assigned a `verb` field.
 
-The exit-code table, error vocabulary, and verb set are public versioned API. Changing one requires
-a major package release.
+A top-level command named after a shared noun's alias throws, and so does a verb that shared noun
+does not offer.
+
+The exit-code table, error vocabulary, verb set, and shared nouns are public versioned API. Changing
+one requires a major package release.
+
+## Shared nouns
+
+`SHARED_NOUNS` holds the nouns every CLI names the same way. A CLI that offers one uses its spec
+as is, or with fewer verbs and its own `valueFlags`; domain nouns such as `tasks` or `lessons`
+stay with each CLI.
+
+| Noun | Aliases | Verbs | Default by arity |
+|---|---|---|---|
+| `courses` | `units`, `projects` | list, show, get | 0 list, 1 show |
+| `grades` | | list | 0 list, 1 list |
+
+`courses` is canonical because Ed and Moodle both call them courses; `units` is an Australian usage.
+
+Each `grades` row carries `grade` and `max` as numbers or `null`, and a `status` from
+`GRADE_STATUSES`: `graded`, `ungraded`, `unreleased` (marked but not released to the student),
+`not_submitted`, or `unavailable` (the platform refused or failed for that row). Display strings
+such as a letter grade or a range are optional extra fields.
 
 The conformance suite is isolated under `conformance/`. Until all three CLIs have published their
 normalized releases, missing binaries are reported as skipped tests. Its CI workflow installs the
