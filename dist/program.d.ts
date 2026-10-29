@@ -37,4 +37,6 @@ export declare function createProgram(meta: {
     description: string;
 }): Command;
 export declare function mutating(command: Command): Command;
+/** Whether `mutating` marked this command, for a CLI that describes its own command tree. */
+export declare function isMutating(command: Command): boolean;
 export declare function commandsJson(program: Command): ProgramDescription;

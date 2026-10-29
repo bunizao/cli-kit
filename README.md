@@ -145,7 +145,8 @@ preserve that status without reporting it. Usage failures throw for the boundary
 ## Mutations
 
 Call `mutating(command)` for `send`, `submit`, `set`, and `mark-read` commands. The marker is
-included by `commandsJson`. Command actions call `confirm` before making an upstream request:
+included by `commandsJson`; a CLI that describes its own command tree reads it with
+`isMutating(command)` instead of guessing from command names. Command actions call `confirm` before making an upstream request:
 
 ```ts
 const shouldApply = await confirm(

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { commandsJson, createProgram, mutating } from "../dist/index.js";
+import { commandsJson, createProgram, isMutating, mutating } from "../dist/index.js";
 
 test("commandsJson describes commands and marks mutations", () => {
   const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI" });
@@ -135,4 +135,12 @@ test("commander usage failures still throw once", async () => {
     assert.equal(error.exitCode, 1);
     return true;
   });
+});
+
+test("isMutating reads the mark that mutating sets", () => {
+  const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo" });
+  const reply = mutating(program.command("reply"));
+  const show = program.command("show");
+  assert.equal(isMutating(reply), true);
+  assert.equal(isMutating(show), false);
 });
