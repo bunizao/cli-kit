@@ -2,19 +2,27 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { stringify } from "yaml";
 import { EXIT_CODES } from "./errors.js";
-import { toolDescription } from "./intents.js";
+/** Where agentFiles puts the full command tree; SKILL.md links to it so the skill stays small. */
+export const COMMAND_REFERENCE = "references/commands.md";
+const READ_RULE = "`read` prints Markdown and never changes anything upstream.";
 const SHARED_RULES = [
     "Run the narrowest command or tool that answers the request; one call per intent.",
     "Piped output is JSON and a terminal gets a table. `--fields a,b` keeps only the listed top-level fields.",
-    "`read` prints Markdown and never changes anything upstream.",
     "Run a mutating command only when the user asked for it. It needs a confirmation or `--yes`; `--dry-run` prints the plan first.",
     "Never print, log or store tokens, cookies or session files.",
 ];
-/** SKILL.md for one CLI: what people say, what to run, the rules, and the full command tree. */
+/**
+ * SKILL.md for one CLI: what people say, what to run, the rules and the setup. An agent loads
+ * it whole, so the command tree lives in COMMAND_REFERENCE and each MCP tool's full description
+ * stays with the server.
+ */
 export function renderSkill(options) {
     const binary = options.program.name;
     const commandIntents = options.intents.filter((intent) => intent.command);
     const toolIntents = options.intents.filter((intent) => intent.tool);
+    const hasRead = options.program.commands.some(function reads(command) {
+        return command.verb === "read" || command.commands.some(reads);
+    });
     const exitCodes = Object.entries(EXIT_CODES)
         .map(([code, exit]) => `${exit} ${code}`)
         .join(", ");
@@ -25,28 +33,42 @@ export function renderSkill(options) {
         "## What the user says, and what to run",
         markdownTable(["The user says", "Run", "Then"], commandIntents.map((intent) => [intent.when, `\`${intent.command}\``, intent.then ?? ""])),
         toolIntents.length
-            ? ["## MCP tools", markdownTable(["Tool", "Description"], toolIntents.map((intent) => [`\`${intent.tool}\``, toolDescription(intent)]))].join("\n\n")
+            ? ["## MCP tools", markdownTable(["The user says", "Tool"], toolIntents.map((intent) => [intent.when, `\`${intent.tool}\``]))].join("\n\n")
             : undefined,
         "## Rules",
-        [...SHARED_RULES, ...(options.rules ?? []), `\`${binary} commands --json\` is the source of truth for the command tree.`]
+        [
+            SHARED_RULES[0],
+            SHARED_RULES[1],
+            ...(hasRead ? [READ_RULE] : []),
+            ...SHARED_RULES.slice(2),
+            ...(options.rules ?? []),
+            `Every command, argument and option is in [${COMMAND_REFERENCE}](${COMMAND_REFERENCE}); \`${binary} commands --json\` is the source of truth.`,
+        ]
             .map((rule) => `- ${rule}`)
             .join("\n"),
         options.setup ? `## Setup\n\n${options.setup}` : undefined,
-        "## Commands",
-        markdownTable(["Command", "Description", "Arguments", "Options", "Mutating"], options.program.commands.flatMap((command) => commandRows(binary, command))),
         "## Errors",
         `Errors are printed once on stderr. Exit codes: 0 success, ${exitCodes}.`,
     ].filter((section) => Boolean(section)).join("\n\n") + "\n";
 }
+/** The full command tree as a Markdown table, written to COMMAND_REFERENCE. */
+export function renderCommandReference(program) {
+    return [
+        `# ${program.name} commands`,
+        `Generated from \`${program.name} commands --json\` for version ${program.version}.`,
+        markdownTable(["Command", "Description", "Arguments", "Options", "Mutating"], program.commands.flatMap((command) => commandRows(program.name, command))),
+    ].join("\n\n") + "\n";
+}
 /**
  * Every agent packaging file for one CLI repository, keyed by path from the repository root:
- * SKILL.md for `npx skills add`, the Claude Code plugin and its single-plugin marketplace, and
+ * SKILL.md for `npx skills add` with its command reference, the Claude Code plugin and its single-plugin marketplace, and
  * agents/openai.yaml when Codex metadata is given.
  */
 export function agentFiles(options) {
     const { skill } = options;
     const files = {
         "SKILL.md": renderSkill(skill),
+        [COMMAND_REFERENCE]: renderCommandReference(skill.program),
         ".claude-plugin/plugin.json": json({
             name: skill.name,
             version: options.version,
@@ -74,7 +96,7 @@ export function agentFiles(options) {
                 short_description: options.openai.shortDescription,
                 default_prompt: options.openai.defaultPrompt,
             },
-        });
+        }, { lineWidth: 0 });
     }
     return files;
 }
