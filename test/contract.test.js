@@ -5,6 +5,8 @@ import {
   CliError,
   ERROR_CODES,
   EXIT_CODES,
+  GRADE_STATUSES,
+  SHARED_NOUNS,
   VERBS,
   createTheme,
   exitCodeFor,
@@ -20,6 +22,9 @@ test("exports the versioned CLI contract", () => {
   assert.deepEqual(ERROR_CODES, ["usage", "auth", "config", "not_found", "upstream", "network", "cancelled", "unexpected"]);
   assert.deepEqual(EXIT_CODES, { usage: 2, auth: 3, config: 1, not_found: 4, upstream: 5, network: 1, cancelled: 130, unexpected: 1 });
   assert.equal(exitCodeFor("auth"), 3);
+  assert.deepEqual(Object.keys(SHARED_NOUNS), ["courses", "grades"]);
+  assert.deepEqual(SHARED_NOUNS.courses.aliases, ["units", "projects"]);
+  assert.deepEqual(GRADE_STATUSES, ["graded", "ungraded", "unreleased", "not_submitted", "unavailable"]);
 });
 
 test("resolveFormat applies explicit flags and TTY defaults", () => {

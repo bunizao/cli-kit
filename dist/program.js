@@ -1,8 +1,10 @@
 import { Command } from "commander";
 import { colorEnabled } from "./color.js";
 import { styledHelp } from "./help.js";
+import { SHARED_NOUNS } from "./nouns.js";
 export const VERBS = ["list", "show", "read", "get", "search", "send", "submit", "set", "mark-read"];
 const VERB_SET = new Set(VERBS);
+const SHARED = Object.values(SHARED_NOUNS);
 const mutations = new WeakSet();
 const ACTION_GROUPS = new Set(["auth", "skills"]);
 const ACTIONS = {
@@ -53,8 +55,16 @@ function describe(command, noun) {
     if (noun && ACTION_GROUPS.has(noun) && !ACTIONS[noun]?.has(command.name())) {
         throw new Error(`Unsupported action "${command.name()}" on group "${noun}".`);
     }
+    const canonical = noun ? undefined : SHARED.find((spec) => spec.aliases?.includes(currentNoun));
+    if (canonical) {
+        throw new Error(`Noun "${currentNoun}" is an alias; name the command "${canonical.name}".`);
+    }
     if (verb && !VERB_SET.has(verb)) {
         throw new Error(`Unsupported verb "${verb}" on noun "${noun}".`);
+    }
+    const shared = SHARED.find((spec) => spec.name === noun);
+    if (verb && shared && !shared.verbs.includes(verb)) {
+        throw new Error(`Unsupported verb "${verb}" on shared noun "${noun}".`);
     }
     return {
         name: command.name(),

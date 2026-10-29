@@ -7,6 +7,28 @@ export interface NounSpec {
   readonly valueFlags?: readonly string[];
 }
 
+/**
+ * Nouns every CLI names the same way. A CLI that offers one uses its spec as is, or with fewer
+ * verbs and its own valueFlags, so `moodle grades` and `edstem grades` read alike.
+ */
+export const SHARED_NOUNS = {
+  courses: {
+    name: "courses",
+    aliases: ["units", "projects"],
+    verbs: ["list", "show", "get"],
+    defaultByArity: { 0: "list", 1: "show" },
+  },
+  grades: {
+    name: "grades",
+    verbs: ["list"],
+    defaultByArity: { 0: "list", 1: "list" },
+  },
+} as const satisfies Readonly<Record<string, NounSpec>>;
+
+/** The `status` of one row in `grades` output. */
+export const GRADE_STATUSES = ["graded", "ungraded", "unreleased", "not_submitted", "unavailable"] as const;
+export type GradeStatus = (typeof GRADE_STATUSES)[number];
+
 const GLOBAL_VALUE_FLAGS = new Set(["--fields", "-o", "--output"]);
 
 export function insertDefaultVerb(argv: readonly string[], nouns: readonly NounSpec[]): string[] {
