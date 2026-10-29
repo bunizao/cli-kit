@@ -1,4 +1,4 @@
-import { type Intent } from "./intents.js";
+import type { Intent } from "./intents.js";
 import type { ProgramDescription } from "./program.js";
 export interface SkillOptions {
     /** The skill and plugin name, e.g. "edstem-cli". */
@@ -46,11 +46,19 @@ export interface AgentFilesOptions {
         readonly defaultPrompt: string;
     };
 }
-/** SKILL.md for one CLI: what people say, what to run, the rules, and the full command tree. */
+/** Where agentFiles puts the full command tree; SKILL.md links to it so the skill stays small. */
+export declare const COMMAND_REFERENCE = "references/commands.md";
+/**
+ * SKILL.md for one CLI: what people say, what to run, the rules and the setup. An agent loads
+ * it whole, so the command tree lives in COMMAND_REFERENCE and each MCP tool's full description
+ * stays with the server.
+ */
 export declare function renderSkill(options: SkillOptions): string;
+/** The full command tree as a Markdown table, written to COMMAND_REFERENCE. */
+export declare function renderCommandReference(program: ProgramDescription): string;
 /**
  * Every agent packaging file for one CLI repository, keyed by path from the repository root:
- * SKILL.md for `npx skills add`, the Claude Code plugin and its single-plugin marketplace, and
+ * SKILL.md for `npx skills add` with its command reference, the Claude Code plugin and its single-plugin marketplace, and
  * agents/openai.yaml when Codex metadata is given.
  */
 export declare function agentFiles(options: AgentFilesOptions): Record<string, string>;

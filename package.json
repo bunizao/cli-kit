@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./intents": {
+      "types": "./dist/intents.d.ts",
+      "import": "./dist/intents.js"
     }
   },
   "files": [

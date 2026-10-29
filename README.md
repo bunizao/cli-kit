@@ -226,12 +226,20 @@ writeAgentFiles(process.cwd(), files); // { check: true } returns stale paths fo
 
 `agentFiles` returns, by path from the repository root:
 
-- `SKILL.md`, for `npx skills add owner/repo`. It holds the intent table, the MCP tools, the
-  shared rules plus the CLI's own, the setup, the full command tree and the exit codes.
+- `SKILL.md`, for `npx skills add owner/repo`. An agent loads it whole, so it stays short: the
+  intent table, which MCP tool answers what, the shared rules plus the CLI's own, the setup and the
+  exit codes. Each tool's full description stays with the MCP server.
+- `references/commands.md`: every command with its arguments, options and whether it mutates.
+  `SKILL.md` links to it.
 - `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`: the repository is a Claude
   Code plugin whose one skill is `SKILL.md`, and its own marketplace. Install with
   `claude plugin marketplace add owner/repo`, then `claude plugin install example-cli@example-cli`.
+  A repository with a root `CLAUDE.md` gets one validator warning, since that file is not plugin
+  context; `claude plugin validate .` passes, `--strict` does not.
 - `agents/openai.yaml`, when `openai` metadata is given.
+
+An MCP server that runs on Cloudflare Workers imports `toolDescription` from
+`@bunizao/cli-kit/intents`, which pulls in neither commander nor Node builtins.
 
 `checkIntentCommands(program, nouns, intents)` throws when an intent's command no longer parses:
 a renamed noun or verb, a removed option, or the wrong binary name. Call it from the CLI's tests

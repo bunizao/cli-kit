@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { agentFiles, commandsJson, createProgram, mutating, renderSkill, writeAgentFiles } from "../dist/index.js";
+import { COMMAND_REFERENCE, agentFiles, commandsJson, createProgram, mutating, renderCommandReference, renderSkill, writeAgentFiles } from "../dist/index.js";
 
 function skillOptions() {
   const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI" });
@@ -24,17 +24,34 @@ function skillOptions() {
   };
 }
 
-test("renderSkill writes frontmatter, intents, tools, rules, commands and exit codes", () => {
+test("renderSkill writes frontmatter, intents, tools, rules and exit codes, and links the command tree", () => {
   const skill = renderSkill(skillOptions());
 
   assert.match(skill, /^---\nname: demo-cli\ndescription: "Read demo courses: grades, tasks and files."\n---\n\n# Demo CLI\n\nCOURSE is a code or id.\n/);
   assert.match(skill, /\| my courses \| `demo courses` \| pass a code as COURSE \|/);
-  assert.doesNotMatch(skill, /\| a widget \|/);
-  assert.match(skill, /\| `show_widget` \| A widget\. Use when the user says "a widget"\. \|/);
-  assert.match(skill, /- Ask before submitting\.\n- `demo commands --json` is the source of truth/);
-  assert.match(skill, /\| `demo tasks submit` \| Submit a task\. \| <task> \| {2}\| yes \|/);
+  // MCP tools are listed by when to use them; the full description stays with the server.
+  assert.match(skill, /## MCP tools\n\n\| The user says \| Tool \|\n\| --- \| --- \|\n\| my courses \| `list_courses` \|\n\| a widget \| `show_widget` \|/);
+  assert.doesNotMatch(skill, /Use when the user says/);
+  assert.match(skill, /- Ask before submitting\.\n- Every command, argument and option is in \[references\/commands\.md\]\(references\/commands\.md\); `demo commands --json` is the source of truth\./);
+  assert.doesNotMatch(skill, /`demo tasks submit`/);
   assert.match(skill, /Exit codes: 0 success, 2 usage, 3 auth/);
   assert.ok(skill.endsWith("\n"));
+});
+
+test("renderSkill states the read rule only for a CLI with a read verb", () => {
+  assert.doesNotMatch(renderSkill(skillOptions()), /`read` prints Markdown/);
+
+  const program = createProgram({ name: "demo", version: "1.2.3", description: "Demo CLI" });
+  program.command("tasks").command("read <task>");
+  assert.match(renderSkill({ ...skillOptions(), program: commandsJson(program) }), /- `read` prints Markdown and never changes anything upstream\./);
+});
+
+test("renderCommandReference lists every command with its arguments, options and mutations", () => {
+  const reference = renderCommandReference(skillOptions().program);
+
+  assert.match(reference, /^# demo commands\n\nGenerated from `demo commands --json` for version 1\.2\.3\./);
+  assert.match(reference, /\| `demo courses list` \| List courses\. \| {2}\| {2}\| no \|/);
+  assert.match(reference, /\| `demo tasks submit` \| Submit a task\. \| <task> \| {2}\| yes \|/);
 });
 
 test("agentFiles packages the skill as a Claude Code plugin, a marketplace and Codex metadata", () => {
@@ -45,10 +62,10 @@ test("agentFiles packages the skill as a Claude Code plugin, a marketplace and C
     author: { name: "example" },
     license: "MIT",
     mcpServers: { demo: { command: "npx", args: ["-y", "demo-cli", "mcp"] } },
-    openai: { displayName: "Demo CLI", shortDescription: "Read demo courses", defaultPrompt: "Use $demo-cli." },
+    openai: { displayName: "Demo CLI", shortDescription: "Read demo courses", defaultPrompt: `Use $demo-cli ${"to read courses ".repeat(6)}` },
   });
 
-  assert.deepEqual(Object.keys(files), ["SKILL.md", ".claude-plugin/plugin.json", ".claude-plugin/marketplace.json", "agents/openai.yaml"]);
+  assert.deepEqual(Object.keys(files), ["SKILL.md", COMMAND_REFERENCE, ".claude-plugin/plugin.json", ".claude-plugin/marketplace.json", "agents/openai.yaml"]);
   assert.deepEqual(JSON.parse(files[".claude-plugin/plugin.json"]), {
     name: "demo-cli",
     version: "1.2.3",
@@ -68,7 +85,8 @@ test("agentFiles packages the skill as a Claude Code plugin, a marketplace and C
   });
   assert.equal(
     files["agents/openai.yaml"],
-    "interface:\n  display_name: Demo CLI\n  short_description: Read demo courses\n  default_prompt: Use $demo-cli.\n",
+    // One line per field, however long the prompt.
+    `interface:\n  display_name: Demo CLI\n  short_description: Read demo courses\n  default_prompt: "Use $demo-cli ${"to read courses ".repeat(6)}"\n`,
   );
 });
 

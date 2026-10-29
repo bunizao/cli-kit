@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { SHARED_NOUNS, checkIntentCommands, createProgram, toolDescription } from "../dist/index.js";
@@ -46,4 +47,12 @@ test("checkIntentCommands reports renamed commands, removed options and the wron
       return true;
     },
   );
+});
+
+test("the intents entry point imports nothing but nouns, so a Worker can bundle it", async () => {
+  const intents = await import("@bunizao/cli-kit/intents");
+  assert.equal(typeof intents.toolDescription, "function");
+  const imports = (file) => [...readFileSync(new URL(`../dist/${file}`, import.meta.url), "utf8").matchAll(/^import .* from "([^"]+)";$/gm)].map((match) => match[1]);
+  assert.deepEqual(imports("intents.js"), ["./nouns.js"]);
+  assert.deepEqual(imports("nouns.js"), []);
 });
