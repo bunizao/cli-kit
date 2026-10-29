@@ -82,6 +82,11 @@ export function mutating(command: Command): Command {
   return command;
 }
 
+/** Whether `mutating` marked this command, for a CLI that describes its own command tree. */
+export function isMutating(command: Command): boolean {
+  return mutations.has(command);
+}
+
 export function commandsJson(program: Command): ProgramDescription {
   return {
     name: program.name(),

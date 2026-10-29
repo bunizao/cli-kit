@@ -41,6 +41,10 @@ export function mutating(command) {
     mutations.add(command);
     return command;
 }
+/** Whether `mutating` marked this command, for a CLI that describes its own command tree. */
+export function isMutating(command) {
+    return mutations.has(command);
+}
 export function commandsJson(program) {
     return {
         name: program.name(),
