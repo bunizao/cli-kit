@@ -91,7 +91,16 @@ test("commandsJson rejects a shared alias used as the command name", () => {
   const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
   program.command("units").alias("courses").command("list");
 
-  assert.throws(() => commandsJson(program), /Noun "units" is an alias; name the command "courses"/);
+  assert.throws(() => commandsJson(program), /"units" belongs to the shared noun "courses"; name that command "courses"/);
+});
+
+test("commandsJson rejects a shared name or alias on another command", () => {
+  for (const alias of ["units", "grades"]) {
+    const program = createProgram({ name: "demo", version: "1.0.0", description: "Demo CLI" });
+    program.command("tasks").alias(alias).command("list");
+
+    assert.throws(() => commandsJson(program), new RegExp(`"${alias}" belongs to the shared noun`));
+  }
 });
 
 test("commandsJson rejects a contract verb a shared noun does not offer", () => {

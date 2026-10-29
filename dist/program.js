@@ -55,9 +55,12 @@ function describe(command, noun) {
     if (noun && ACTION_GROUPS.has(noun) && !ACTIONS[noun]?.has(command.name())) {
         throw new Error(`Unsupported action "${command.name()}" on group "${noun}".`);
     }
-    const canonical = noun ? undefined : SHARED.find((spec) => spec.aliases?.includes(currentNoun));
-    if (canonical) {
-        throw new Error(`Noun "${currentNoun}" is an alias; name the command "${canonical.name}".`);
+    // A shared noun's name and aliases belong to that noun alone, whether used as a name or an alias.
+    for (const word of noun ? [] : [currentNoun, ...command.aliases()]) {
+        const owner = SHARED.find((spec) => spec.name === word || spec.aliases?.includes(word));
+        if (owner && owner.name !== currentNoun) {
+            throw new Error(`"${word}" belongs to the shared noun "${owner.name}"; name that command "${owner.name}".`);
+        }
     }
     if (verb && !VERB_SET.has(verb)) {
         throw new Error(`Unsupported verb "${verb}" on noun "${noun}".`);
