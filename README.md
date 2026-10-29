@@ -215,7 +215,16 @@ const INTENTS: readonly Intent[] = [
 server.registerTool("list_grades", { description: toolDescription(INTENTS[0]) /* , schema */ }, handler);
 
 const files = agentFiles({
-  skill: { name: "example-cli", description, title: "Example CLI", intents: INTENTS, program: commandsJson(program) },
+  skill: {
+    name: "example-cli",
+    description: "Reads Example courses, grades and deadlines",
+    useWhen: 'the user names Example or asks "what\'s due", "my grades"',
+    title: "Example CLI",
+    intents: INTENTS,
+    mcpServer: "example",
+    workflows: [{ title: "Submit an assignment", steps: ["...", "Check the submission status"] }],
+    program: commandsJson(program),
+  },
   version,
   repository: "https://github.com/example/example-cli",
   author: { name: "example" },
@@ -226,17 +235,25 @@ writeAgentFiles(process.cwd(), files); // { check: true } returns stale paths fo
 
 `agentFiles` returns, by path from the repository root:
 
-- `SKILL.md`, for `npx skills add owner/repo`. An agent loads it whole, so it stays short: the
-  intent table, which MCP tool answers what, the shared rules plus the CLI's own, the setup and the
-  exit codes. Each tool's full description stays with the MCP server.
-- `references/commands.md`: every command with its arguments, options and whether it mutates.
-  `SKILL.md` links to it.
+- `skills/<name>/SKILL.md`, which `npx skills add owner/repo` and Claude Code both find. An agent
+  loads it whole, so it stays short: one table of what the user says against the CLI command and
+  the `server:tool` MCP tool, the workflows as copyable checklists, the rules and the setup. A CLI
+  with a mutating command gets the shared dry-run, confirm, apply, read-back workflow first. Each
+  tool's full description stays with the MCP server.
+- The frontmatter description is `description` then "Use when `useWhen`". `renderSkill` throws
+  when the name or description breaks the Agent Skills limits (lowercase hyphenated name, 1024
+  characters, no `<` or `>`) or uses "I" or "you" outside quotes.
+- `skills/<name>/references/commands.md`: every command with its arguments, options and whether
+  it mutates, plus the exit codes. Pages in `references` are written next to it.
+- `skills/<name>/agents/openai.yaml`, when `openai` metadata is given.
 - `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`: the repository is a Claude
-  Code plugin whose one skill is `SKILL.md`, and its own marketplace. Install with
+  Code plugin, which loads `skills/` by default, and its own marketplace. Install with
   `claude plugin marketplace add owner/repo`, then `claude plugin install example-cli@example-cli`.
   A repository with a root `CLAUDE.md` gets one validator warning, since that file is not plugin
   context; `claude plugin validate .` passes, `--strict` does not.
-- `agents/openai.yaml`, when `openai` metadata is given.
+
+`writeAgentFiles` never deletes, so a CLI moving to this layout removes its old root `SKILL.md`,
+`references/` and `agents/` itself.
 
 An MCP server that runs on Cloudflare Workers imports `toolDescription` from
 `@bunizao/cli-kit/intents`, which pulls in neither commander nor Node builtins.
