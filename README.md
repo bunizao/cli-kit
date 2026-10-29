@@ -172,6 +172,10 @@ does not offer.
 The exit-code table, error vocabulary, verb set, and shared nouns are public versioned API. Changing
 one requires a major package release.
 
+The conformance suite is isolated under `conformance/`. Until all three CLIs have published their
+normalized releases, missing binaries are reported as skipped tests. Its CI workflow installs the
+published packages before running the suite.
+
 ## Shared nouns
 
 `SHARED_NOUNS` holds the nouns every CLI names the same way. A CLI that offers one uses its spec
@@ -190,9 +194,48 @@ Each `grades` row carries `grade` and `max` as numbers or `null`, and a `status`
 `not_submitted`, or `unavailable` (the platform refused or failed for that row). Display strings
 such as a letter grade or a range are optional extra fields.
 
-The conformance suite is isolated under `conformance/`. Until all three CLIs have published their
-normalized releases, missing binaries are reported as skipped tests. Its CI workflow installs the
-published packages before running the suite.
+## Intents, skills and plugins
+
+An `Intent` maps what a person says to the command and the MCP tool that answer it. One list of
+intents is the single source for the skill, the MCP tool descriptions and the agent packaging:
+
+```ts
+const INTENTS: readonly Intent[] = [
+  {
+    when: "my grades / what did I get",
+    what: "Graded items per course with grade, max and status.",
+    command: "example grades [COURSE]",
+    tool: "list_grades",
+    refs: "course code, name or id",
+    then: "show the item for feedback",
+    cost: "small",
+  },
+];
+
+server.registerTool("list_grades", { description: toolDescription(INTENTS[0]) /* , schema */ }, handler);
+
+const files = agentFiles({
+  skill: { name: "example-cli", description, title: "Example CLI", intents: INTENTS, program: commandsJson(program) },
+  version,
+  repository: "https://github.com/example/example-cli",
+  author: { name: "example" },
+  mcpServers: { example: { command: "npx", args: ["-y", "example-cli", "mcp"] } },
+});
+writeAgentFiles(process.cwd(), files); // { check: true } returns stale paths for CI
+```
+
+`agentFiles` returns, by path from the repository root:
+
+- `SKILL.md`, for `npx skills add owner/repo`. It holds the intent table, the MCP tools, the
+  shared rules plus the CLI's own, the setup, the full command tree and the exit codes.
+- `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`: the repository is a Claude
+  Code plugin whose one skill is `SKILL.md`, and its own marketplace. Install with
+  `claude plugin marketplace add owner/repo`, then `claude plugin install example-cli@example-cli`.
+- `agents/openai.yaml`, when `openai` metadata is given.
+
+`checkIntentCommands(program, nouns, intents)` throws when an intent's command no longer parses:
+a renamed noun or verb, a removed option, or the wrong binary name. Call it from the CLI's tests
+so the skill and the MCP descriptions cannot drift from the command tree.
 
 ## Prompts and progress
 
