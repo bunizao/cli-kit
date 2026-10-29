@@ -108,5 +108,9 @@ test("toneOf reads the shared status vocabulary and negations", () => {
   assert.equal(toneOf("announcement"), "accent");
   assert.equal(toneOf("question"), "info");
   assert.equal(toneOf("Unit A"), undefined);
+  assert.deepEqual(
+    ["graded", "ungraded", "unreleased", "not_submitted", "unavailable"].map((status) => toneOf(status)),
+    ["success", "muted", "warning", "muted", "danger"],
+  );
   assert.equal(toneOf("Rediscuss", { rediscuss: "warning" }), "warning");
 });

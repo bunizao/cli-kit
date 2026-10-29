@@ -35,8 +35,8 @@ const TONE_STYLE: Readonly<Record<Tone, Parameters<Paint>[0]>> = {
 // Checked in order: a negated word ("not graded") must win over the word it contains.
 const TONE_WORDS: readonly (readonly [Tone, RegExp])[] = [
   ["muted", /^(?:-|—|none|n\/a|unknown)$|\b(?:not[ _](?:started|submitted|graded|attempted|available|yet)|no submission|un(?:attempted|graded|submitted)|archived|hidden|unlisted|inactive|closed|disabled)\b/iu],
-  ["danger", /\b(?:overdue|late|fail(?:ed|ure)?|error|missing|rejected|need(?:s)?[ _]help|blocked|expired|redo|resubmit|demonstrate|exceeded)\b/iu],
-  ["warning", /\b(?:pending|draft|working|in[ _]progress|due soon|today|tomorrow|awaiting|unanswered|scheduled|discuss|attempted|partial)\b/iu],
+  ["danger", /\b(?:overdue|late|fail(?:ed|ure)?|error|missing|rejected|need(?:s)?[ _]help|blocked|expired|redo|resubmit|demonstrate|exceeded|unavailable)\b/iu],
+  ["warning", /\b(?:pending|draft|working|in[ _]progress|due soon|today|tomorrow|awaiting|unanswered|scheduled|discuss|attempted|partial|unreleased)\b/iu],
   ["success", /\b(?:complete[d]?|done|submitted|graded|accepted|passed|resolved|answered|ready[ _]for[ _]feedback|active|signed in|ok|success(?:ful)?|enrolled)\b/iu],
   ["accent", /\b(?:announcement|pinned|staff|endorsed|official|urgent)\b/iu],
   ["info", /\b(?:question|post|note|general|info)\b/iu],
