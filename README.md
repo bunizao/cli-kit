@@ -314,9 +314,12 @@ const html = consentPage({
 return new Response(html, { headers: CONSENT_HEADERS });
 ```
 
-The form posts `decision` (`approve` or `deny`), the hidden `fields`, and the secret. Deny skips validation, so the secret is not needed to refuse.
+The form posts `decision` (`approve` or `deny`), the hidden `fields`, the secret, and `1` for each ticked toggle. Deny skips validation, so neither the secret nor a required toggle is needed to refuse.
 
-In `access`, `limits`, the secret's `hint`, `error` and `messagePage`'s message, `backticks` become a command chip that copies on click; in a hint or message it is a full-width `$` line, so end the sentence with it. The copy script is the page's only script, and `CONSENT_HEADERS` allows it by hash. Every page ends with a footer linking to unicorn.
+- `secret.required: false` lets the owner approve with the field empty, for example to keep a token given before.
+- `toggles` are checkboxes under the secret: an opt-in such as extra scopes, or `required: true` for an agreement.
+
+In `access`, `limits`, the secret's `hint`, toggles, `error` and `messagePage`'s message, `[text](https://…)` becomes a link and `backticks` become a command chip that copies on click; in a hint or message it is a full-width `$` line, so end the sentence with it. The copy script is the page's only script, and `CONSENT_HEADERS` allows it by hash. Every page ends with a footer linking to unicorn.
 
 The page shows the logo of a known client: Claude, Claude Code, ChatGPT, Codex, Cursor, Windsurf, VS Code, Gemini, Goose, Cline, Kiro, Trae, LM Studio, Perplexity or Le Chat. Any client can register under any name, so the logo follows the redirect:
 

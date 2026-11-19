@@ -8,11 +8,23 @@ export interface ConsentSecret {
   /** Form field name the secret is posted under. */
   readonly name: string;
   readonly label: string;
-  /** Shown under the field; `backticks` become a command chip that copies on click. */
+  /** Shown under the field; `backticks` become a command chip that copies on click, [text](https://…) a link. */
   readonly hint?: string;
   /** "code" for a short one-time pairing code shown as typed; "password" (the default) hides it. */
   readonly kind?: "password" | "code";
   readonly placeholder?: string;
+  /** False when approving without it is fine, e.g. to keep a token given before. Defaults to true. */
+  readonly required?: boolean;
+}
+
+/** A checkbox posted as "1" when ticked: an opt-in, or an agreement the owner must tick. */
+export interface ConsentToggle {
+  readonly name: string;
+  /** [text](https://…) becomes a link. */
+  readonly label: string;
+  readonly hint?: string;
+  /** Allow is refused until it is ticked; Deny never needs it. */
+  readonly required?: boolean;
 }
 
 export interface ConsentPageOptions {
@@ -34,6 +46,8 @@ export interface ConsentPageOptions {
   readonly fields?: Readonly<Record<string, string>>;
   /** A field the owner fills to approve, e.g. a pairing code. */
   readonly secret?: ConsentSecret;
+  /** Checkboxes under the secret. */
+  readonly toggles?: readonly ConsentToggle[];
   /** Shown above the form; `backticks` become command chips. */
   readonly error?: string;
 }
@@ -97,6 +111,7 @@ export function consentPage(options: ConsentPageOptions): string {
   const hidden = Object.entries(options.fields ?? {})
     .map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`).join("");
   const secret = options.secret ? secretField(options.secret) : "";
+  const toggles = options.toggles?.length ? `<div class="toggles">${options.toggles.map(toggleField).join("")}</div>` : "";
   const list = (lines: readonly string[], kind: "can" | "cannot") =>
     `<ul>${lines.map((line) => `<li class="${kind}">${kind === "can" ? ICON.check : ICON.cross}<span>${rich(line)}</span></li>`).join("")}</ul>`;
   const body = `<div class="pair">
@@ -111,7 +126,7 @@ ${impostor ? `<p class="notice warn">${ICON.alert}<span>This app calls itself ${
 <p class="label">${client} can</p>
 ${list(options.access, "can")}
 ${options.limits?.length ? `<p class="label">It can't</p>${list(options.limits, "cannot")}` : ""}
-<form method="post" action="${escapeHtml(options.action)}">${hidden}${secret}
+<form method="post" action="${escapeHtml(options.action)}">${hidden}${secret}${toggles}
 <div class="actions">
 <button type="submit" name="decision" value="deny" class="secondary" formnovalidate>Deny</button>
 <button type="submit" name="decision" value="approve">Allow</button>
@@ -149,8 +164,13 @@ function secretField(secret: ConsentSecret): string {
     ? 'type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" class="code"'
     : 'type="password" autocomplete="current-password"';
   return `<div class="field"><label for="${id}">${escapeHtml(secret.label)}</label>
-<input ${input} name="${escapeHtml(secret.name)}" id="${id}"${secret.placeholder ? ` placeholder="${escapeHtml(secret.placeholder)}"` : ""} required autofocus>
+<input ${input} name="${escapeHtml(secret.name)}" id="${id}"${secret.placeholder ? ` placeholder="${escapeHtml(secret.placeholder)}"` : ""}${secret.required === false ? "" : " required"} autofocus>
 ${secret.hint ? `<p class="hint">${rich(secret.hint)}</p>` : ""}</div>`;
+}
+
+function toggleField(toggle: ConsentToggle): string {
+  return `<label class="toggle"><input type="checkbox" name="${escapeHtml(toggle.name)}" value="1"${toggle.required ? " required" : ""}>
+<span><span>${rich(toggle.label)}</span>${toggle.hint ? `<small>${rich(toggle.hint)}</small>` : ""}</span></label>`;
 }
 
 function destination(redirectUri: string, known: KnownClient | undefined): string {
@@ -163,10 +183,13 @@ function destination(redirectUri: string, known: KnownClient | undefined): strin
     : `Access goes to the app that opens <b>${escapeHtml(url.protocol)}//</b> links`;
 }
 
-/** Escapes text and turns each `command` into a chip that copies it. */
+/** Escapes text, turns each `command` into a chip that copies it and each [text](https://…) into a link. */
 function rich(text: string): string {
-  return escapeHtml(text).replace(/`([^`]+)`/gu, (_, command: string) =>
-    `<button type="button" class="cmd" data-copy="${command}" title="Copy"><code>${command}</code>${ICON.copy}${ICON.done}</button>`);
+  return escapeHtml(text)
+    .replace(/\[([^\]`]+)\]\((https:\/\/[^\s()`]+)\)/gu, (_, label: string, href: string) =>
+      `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`)
+    .replace(/`([^`]+)`/gu, (_, command: string) =>
+      `<button type="button" class="cmd" data-copy="${command}" title="Copy"><code>${command}</code>${ICON.copy}${ICON.done}</button>`);
 }
 
 function parseUrl(value: string): URL | undefined {
@@ -290,6 +313,14 @@ cursor:pointer;transition:opacity .15s,background .15s}
 .actions button:focus-visible{outline:none;box-shadow:0 0 0 4px var(--ring)}
 @media (max-width:420px){.card{padding:28px 20px 20px;border-radius:20px}h1{font-size:20px}}
 .foot{color:var(--faint);font-size:12px;text-align:center;margin:16px 0 0}
+.hint a,.toggle a,li a,.notice a,.message a{color:inherit;text-decoration:underline;text-decoration-color:var(--faint);text-underline-offset:2px}
+.hint a:hover,.toggle a:hover,li a:hover,.notice a:hover,.message a:hover{text-decoration-color:currentColor}
+.toggles{display:grid;gap:12px;margin:4px 0 20px;border-top:1px solid var(--line);padding-top:20px}
+.field+.toggles{margin-top:-4px;border-top:0;padding-top:0}
+.toggle{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45;cursor:pointer}
+.toggle input{width:16px;height:16px;flex:none;margin:2px 0 0;accent-color:var(--primary)}
+.toggle>span{display:grid;gap:2px}
+.toggle small{color:var(--muted);font-size:12.5px}
 footer{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;font-size:12px;color:var(--faint)}
 footer a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
 footer a:hover{color:var(--fg);border-color:var(--line)}

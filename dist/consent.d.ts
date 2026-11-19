@@ -2,11 +2,22 @@ export interface ConsentSecret {
     /** Form field name the secret is posted under. */
     readonly name: string;
     readonly label: string;
-    /** Shown under the field; `backticks` become a command chip that copies on click. */
+    /** Shown under the field; `backticks` become a command chip that copies on click, [text](https://…) a link. */
     readonly hint?: string;
     /** "code" for a short one-time pairing code shown as typed; "password" (the default) hides it. */
     readonly kind?: "password" | "code";
     readonly placeholder?: string;
+    /** False when approving without it is fine, e.g. to keep a token given before. Defaults to true. */
+    readonly required?: boolean;
+}
+/** A checkbox posted as "1" when ticked: an opt-in, or an agreement the owner must tick. */
+export interface ConsentToggle {
+    readonly name: string;
+    /** [text](https://…) becomes a link. */
+    readonly label: string;
+    readonly hint?: string;
+    /** Allow is refused until it is ticked; Deny never needs it. */
+    readonly required?: boolean;
 }
 export interface ConsentPageOptions {
     /** The service being connected, e.g. "OnTrack". */
@@ -27,6 +38,8 @@ export interface ConsentPageOptions {
     readonly fields?: Readonly<Record<string, string>>;
     /** A field the owner fills to approve, e.g. a pairing code. */
     readonly secret?: ConsentSecret;
+    /** Checkboxes under the secret. */
+    readonly toggles?: readonly ConsentToggle[];
     /** Shown above the form; `backticks` become command chips. */
     readonly error?: string;
 }
