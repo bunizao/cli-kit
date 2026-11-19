@@ -11,6 +11,8 @@ export interface ConsentSecret {
 export interface ConsentPageOptions {
     /** The service being connected, e.g. "OnTrack". */
     readonly app: string;
+    /** Trusted SVG markup for the service's tile; without it the tile shows the name's initial. */
+    readonly appLogo?: string;
     /** The client's self-declared name, or its client_id when it has none. */
     readonly client: string;
     /** Where the authorization code goes; decides the logo and the "access goes to" line. */

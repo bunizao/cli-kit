@@ -37,6 +37,12 @@ test("the consent page escapes what the client declared and shows where tokens g
   assert.match(html, /<b>&#60;<\/b>/u);
 });
 
+test("the app tile shows its logo when given one, else its initial", () => {
+  const logo = '<svg aria-hidden="true" viewBox="0 0 1 1"><path d="M0 0h1"/></svg>';
+  assert.match(consentPage({ ...base, appLogo: logo }), /<div class="tile"><svg aria-hidden="true" viewBox="0 0 1 1">/u);
+  assert.match(consentPage(base), /<div class="tile app"><b>O<\/b><\/div>/u);
+});
+
 test("a client that claims a known name but sends tokens elsewhere is called out", () => {
   assert.match(consentPage({ ...base, redirectUri: "https://evil.example/cb" }), /calls itself Claude, but its access does not go to Claude/u);
   assert.match(consentPage({ ...base, client: "Codex", redirectUri: "https://evil.example/cb" }), /calls itself Codex/u);

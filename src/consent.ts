@@ -18,6 +18,8 @@ export interface ConsentSecret {
 export interface ConsentPageOptions {
   /** The service being connected, e.g. "OnTrack". */
   readonly app: string;
+  /** Trusted SVG markup for the service's tile; without it the tile shows the name's initial. */
+  readonly appLogo?: string;
   /** The client's self-declared name, or its client_id when it has none. */
   readonly client: string;
   /** Where the authorization code goes; decides the logo and the "access goes to" line. */
@@ -100,7 +102,7 @@ export function consentPage(options: ConsentPageOptions): string {
   const body = `<div class="pair">
 <div class="tile">${known ? known.logo : `<b>${escapeHtml(initial(options.client))}</b>`}</div>
 <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
-<div class="tile app"><b>${escapeHtml(initial(options.app))}</b></div>
+${options.appLogo ? `<div class="tile">${options.appLogo}</div>` : `<div class="tile app"><b>${escapeHtml(initial(options.app))}</b></div>`}
 </div>
 <h1>Allow ${client} to use your ${app}?</h1>
 <p class="dest"><span>${ICON.lock}${destination(options.redirectUri, known)}</span></p>
@@ -233,7 +235,7 @@ main{min-height:100vh;display:flex;flex-direction:column;align-items:center;just
 box-shadow:0 1px 1px rgba(0,0,0,.03),0 10px 24px -12px rgba(0,0,0,.10),0 32px 64px -32px rgba(0,0,0,.16)}
 .pair{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:22px}
 .tile{width:60px;height:60px;border-radius:18px;background:var(--soft);border:1px solid var(--line);display:grid;place-items:center;color:var(--fg)}
-.tile svg{width:32px;height:32px}
+.tile svg{width:34px;height:34px}
 .tile b{font-size:24px;font-weight:600}
 .tile.app{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
 .dots{display:flex;gap:5px}

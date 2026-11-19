@@ -298,6 +298,7 @@ import { CONSENT_HEADERS, consentPage, messagePage } from "@bunizao/cli-kit/cons
 
 const html = consentPage({
   app: "OnTrack",
+  appLogo: ONTRACK_SVG, // optional; the tile shows "O" without it
   client: client.clientName ?? clientId,
   redirectUri,
   access: ["See your units, tasks and due dates"],
