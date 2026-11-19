@@ -55,6 +55,11 @@ test("the consent page posts the decision, hidden fields and the owner secret", 
   assert.match(html, /<svg aria-hidden="true"/u);
 });
 
+test("a pairing code field shows what is typed and suggests one-time codes", () => {
+  const html = consentPage({ ...base, secret: { name: "pairing_code", label: "Pairing code", kind: "code" } });
+  assert.match(html, /<input type="text" autocomplete="one-time-code"[^>]* name="pairing_code" required/u);
+});
+
 test("an app-scheme redirect names the app that receives the tokens", () => {
   assert.match(consentPage({ ...base, client: "Cursor", redirectUri: "cursor://anysphere.cursor-retrieval/cb" }), /Tokens go to the Cursor app/u);
   assert.match(consentPage({ ...base, client: "Tool", redirectUri: "tool://cb" }), /the app that opens tool:\/\/ links/u);

@@ -3,6 +3,8 @@ export interface ConsentSecret {
     readonly name: string;
     readonly label: string;
     readonly hint?: string;
+    /** "code" for a short one-time pairing code shown as typed; "password" (the default) hides it. */
+    readonly kind?: "password" | "code";
 }
 export interface ConsentPageOptions {
     /** The service being connected, e.g. "OnTrack". */

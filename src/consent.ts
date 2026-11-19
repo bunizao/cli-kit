@@ -9,6 +9,8 @@ export interface ConsentSecret {
   readonly name: string;
   readonly label: string;
   readonly hint?: string;
+  /** "code" for a short one-time pairing code shown as typed; "password" (the default) hides it. */
+  readonly kind?: "password" | "code";
 }
 
 export interface ConsentPageOptions {
@@ -85,7 +87,9 @@ export function consentPage(options: ConsentPageOptions): string {
     .map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`).join("");
   const secret = options.secret
     ? `<label class="field"><span>${escapeHtml(options.secret.label)}</span>
-<input type="password" name="${escapeHtml(options.secret.name)}" autocomplete="current-password" required autofocus>
+<input ${options.secret.kind === "code"
+    ? 'type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" class="code"'
+    : 'type="password" autocomplete="current-password"'} name="${escapeHtml(options.secret.name)}" required autofocus>
 ${options.secret.hint ? `<small>${escapeHtml(options.secret.hint)}</small>` : ""}</label>`
     : "";
   const body = `<div class="pair">
@@ -191,6 +195,7 @@ li::before{content:"";position:absolute;left:4px;top:16px;width:10px;height:5px;
 .field{display:block;margin:0 0 18px}
 .field span{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
 .field input{width:100%;font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.field input.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;text-transform:uppercase}
 .field input:focus{outline:none;border-color:var(--muted);box-shadow:0 0 0 4px var(--ring)}
 .field small{display:block;color:var(--muted);font-size:12px;margin-top:6px}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
