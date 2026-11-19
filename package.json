@@ -15,6 +15,10 @@
     "./consent": {
       "types": "./dist/consent.d.ts",
       "import": "./dist/consent.js"
+    },
+    "./site-icon": {
+      "types": "./dist/site-icon.d.ts",
+      "import": "./dist/site-icon.js"
     }
   },
   "files": [

@@ -37,6 +37,35 @@ test("the consent page escapes what the client declared and shows where tokens g
   assert.match(html, /<b>&#60;<\/b>/u);
 });
 
+test("the app tile shows its icon when given a data: image, else its initial", () => {
+  assert.match(consentPage({ ...base, appIcon: "data:image/png;base64,AAAA" }), /<div class="tile"><img alt="" src="data:image\/png;base64,AAAA"><\/div>/u);
+  assert.match(consentPage({ ...base, appIcon: "https://evil.example/x.png" }), /<div class="tile app"><b>O<\/b><\/div>/u);
+  assert.match(consentPage(base), /<div class="tile app"><b>O<\/b><\/div>/u);
+});
+
+test("a secret can be optional and toggles post 1, with a required one blocking Allow but not Deny", () => {
+  const html = consentPage({
+    ...base,
+    secret: { name: "ed_token", label: "Ed API token", required: false },
+    toggles: [
+      { name: "scope_write", label: "Also submit quizzes", hint: "Off unless you want it." },
+      { name: "accept_tos", label: "I agree to the [Terms](https://example.com/tos)", required: true },
+    ],
+  });
+  assert.doesNotMatch(html, /name="ed_token"[^>]*required/u);
+  assert.match(html, /<input type="checkbox" name="scope_write" value="1">/u);
+  assert.match(html, /<input type="checkbox" name="accept_tos" value="1" required>/u);
+  assert.match(html, /<a href="https:\/\/example.com\/tos" target="_blank" rel="noopener noreferrer">Terms<\/a>/u);
+  assert.match(html, /value="deny" class="secondary" formnovalidate/u);
+  assert.match(consentPage({ ...base, secret: { name: "code", label: "Code" } }), /name="code" id="f-code" required/u);
+});
+
+test("only https links become anchors", () => {
+  const html = consentPage({ ...base, access: ["[x](javascript:alert(1))", "[y](http://a.example)", "[z](https://a.example/?q=\"<)"] });
+  assert.doesNotMatch(html, /href="(?:javascript|http:)/u);
+  assert.match(html, /<a href="https:\/\/a.example\/\?q=&#34;&#60;"/u);
+});
+
 test("a client that claims a known name but sends tokens elsewhere is called out", () => {
   assert.match(consentPage({ ...base, redirectUri: "https://evil.example/cb" }), /calls itself Claude, but its access does not go to Claude/u);
   assert.match(consentPage({ ...base, client: "Codex", redirectUri: "https://evil.example/cb" }), /calls itself Codex/u);
