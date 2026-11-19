@@ -300,21 +300,27 @@ const html = consentPage({
   app: "OnTrack",
   client: client.clientName ?? clientId,
   redirectUri,
-  access: ["Read your units, tasks and due dates"],
+  access: ["See your units, tasks and due dates"],
+  limits: ["Submit work or message your tutor"],
   action: "/authorize",
   fields: { handle },
-  secret: { name: "owner_token", label: "Owner token", hint: "Run `ontrack mcp token`." },
+  secret: {
+    name: "pairing_code", label: "Pairing code", kind: "code", placeholder: "ABCD 2345",
+    hint: "Get one on the computer you deployed from: `ontrack mcp pair`",
+  },
 });
 return new Response(html, { headers: CONSENT_HEADERS });
 ```
 
 The form posts `decision` (`approve` or `deny`), the hidden `fields`, and the secret. Deny skips validation, so the secret is not needed to refuse.
 
+In `access`, `limits`, the secret's `hint`, `error` and `messagePage`'s message, `backticks` become a command chip that copies on click; in a hint or message it is a full-width `$` line, so end the sentence with it. The copy script is the page's only script, and `CONSENT_HEADERS` allows it by hash. Every page ends with a footer linking to unicorn.
+
 The page shows the logo of a known client: Claude, Claude Code, ChatGPT, Codex, Cursor, Windsurf, VS Code, Gemini, Goose, Cline, Kiro, Trae, LM Studio, Perplexity or Le Chat. Any client can register under any name, so the logo follows the redirect:
 
 - An https redirect is matched by its host alone.
 - A loopback or app-scheme redirect, which stays on the machine, is matched by its scheme or declared name.
-- A client that claims a known name but sends tokens to another host gets a warning on the page.
+- Any other redirect proves nothing, so a client that claims a known name there gets a warning on the page.
 
 The logos come from [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT). The marks belong to their owners.
 
