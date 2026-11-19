@@ -48,7 +48,7 @@ test("the consent page posts the decision, hidden fields and the owner secret", 
     error: "That token is wrong.",
   });
   assert.match(html, /<input type="hidden" name="handle" value="h&#34;1">/u);
-  assert.match(html, /<input type="password" name="owner_token"[^>]* required/u);
+  assert.match(html, /<input type="password" autocomplete="current-password" name="owner_token" required/u);
   assert.match(html, /name="decision" value="deny"[^>]* formnovalidate/u);
   assert.match(html, /name="decision" value="approve"/u);
   assert.match(html, /role="alert">That token is wrong\./u);
