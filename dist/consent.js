@@ -47,7 +47,7 @@ export function consentPage(options) {
     const body = `<div class="pair">
 <div class="tile">${known ? known.logo : `<b>${escapeHtml(initial(options.client))}</b>`}</div>
 <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
-${options.appLogo ? `<div class="tile">${options.appLogo}</div>` : `<div class="tile app"><b>${escapeHtml(initial(options.app))}</b></div>`}
+${options.appIcon?.startsWith("data:image/") ? `<div class="tile"><img alt="" src="${escapeHtml(options.appIcon)}"></div>` : `<div class="tile app"><b>${escapeHtml(initial(options.app))}</b></div>`}
 </div>
 <h1>Allow ${client} to use your ${app}?</h1>
 <p class="dest"><span>${ICON.lock}${destination(options.redirectUri, known)}</span></p>
@@ -167,7 +167,8 @@ main{min-height:100vh;display:flex;flex-direction:column;align-items:center;just
 box-shadow:0 1px 1px rgba(0,0,0,.03),0 10px 24px -12px rgba(0,0,0,.10),0 32px 64px -32px rgba(0,0,0,.16)}
 .pair{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:22px}
 .tile{width:60px;height:60px;border-radius:18px;background:var(--soft);border:1px solid var(--line);display:grid;place-items:center;color:var(--fg)}
-.tile svg{width:34px;height:34px}
+.tile svg{width:32px;height:32px}
+.tile img{width:34px;height:34px;object-fit:contain}
 .tile b{font-size:24px;font-weight:600}
 .tile.app{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
 .dots{display:flex;gap:5px}

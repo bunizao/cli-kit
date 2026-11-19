@@ -37,9 +37,9 @@ test("the consent page escapes what the client declared and shows where tokens g
   assert.match(html, /<b>&#60;<\/b>/u);
 });
 
-test("the app tile shows its logo when given one, else its initial", () => {
-  const logo = '<svg aria-hidden="true" viewBox="0 0 1 1"><path d="M0 0h1"/></svg>';
-  assert.match(consentPage({ ...base, appLogo: logo }), /<div class="tile"><svg aria-hidden="true" viewBox="0 0 1 1">/u);
+test("the app tile shows its icon when given a data: image, else its initial", () => {
+  assert.match(consentPage({ ...base, appIcon: "data:image/png;base64,AAAA" }), /<div class="tile"><img alt="" src="data:image\/png;base64,AAAA"><\/div>/u);
+  assert.match(consentPage({ ...base, appIcon: "https://evil.example/x.png" }), /<div class="tile app"><b>O<\/b><\/div>/u);
   assert.match(consentPage(base), /<div class="tile app"><b>O<\/b><\/div>/u);
 });
 
