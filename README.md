@@ -295,10 +295,11 @@ node evals/trigger.mjs \
 
 ```ts
 import { CONSENT_HEADERS, consentPage, messagePage } from "@bunizao/cli-kit/consent";
+import { siteIcon } from "@bunizao/cli-kit/site-icon";
 
 const html = consentPage({
   app: "OnTrack",
-  appLogo: ONTRACK_SVG, // optional; the tile shows "O" without it
+  appIcon: await siteIcon("https://ontrack.example.edu"), // optional; the tile shows "O" without it
   client: client.clientName ?? clientId,
   redirectUri,
   access: ["See your units, tasks and due dates"],
@@ -324,6 +325,8 @@ The page shows the logo of a known client: Claude, Claude Code, ChatGPT, Codex, 
 - Any other redirect proves nothing, so a client that claims a known name there gets a warning on the page.
 
 The logos come from [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT). The marks belong to their owners.
+
+`@bunizao/cli-kit/site-icon` finds the icon the service's own website uses, so the tile shows the real OnTrack, Moodle or Ed logo instead of a letter. `siteIcon(origin)` reads the site's home page and takes its SVG icon, else its largest declared icon, else `/favicon.ico`. It returns a `data:` URI the CSP already allows, or `undefined` when none of those loads as an image. Results are cached per isolate; a failure is retried after five minutes.
 
 ## Prompts and progress
 
