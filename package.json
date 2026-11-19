@@ -11,6 +11,10 @@
     "./intents": {
       "types": "./dist/intents.d.ts",
       "import": "./dist/intents.js"
+    },
+    "./consent": {
+      "types": "./dist/consent.d.ts",
+      "import": "./dist/consent.js"
     }
   },
   "files": [

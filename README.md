@@ -289,6 +289,35 @@ node evals/trigger.mjs \
 - This measures Codex, not Claude. Claude Code reads the same folder layout and frontmatter, but
   its routing can differ.
 
+## Consent page
+
+`@bunizao/cli-kit/consent` renders the page a remote MCP server shows when a client asks for access through OAuth. It uses no Node or DOM APIs, so a Cloudflare Worker can import it without pulling in the rest of cli-kit.
+
+```ts
+import { CONSENT_HEADERS, consentPage, messagePage } from "@bunizao/cli-kit/consent";
+
+const html = consentPage({
+  app: "OnTrack",
+  client: client.clientName ?? clientId,
+  redirectUri,
+  access: ["Read your units, tasks and due dates"],
+  action: "/authorize",
+  fields: { handle },
+  secret: { name: "owner_token", label: "Owner token", hint: "Run `ontrack mcp token`." },
+});
+return new Response(html, { headers: CONSENT_HEADERS });
+```
+
+The form posts `decision` (`approve` or `deny`), the hidden `fields`, and the secret. Deny skips validation, so the secret is not needed to refuse.
+
+The page shows the logo of a known client: Claude, Claude Code, ChatGPT, Codex, Cursor, Windsurf, VS Code, Gemini, Goose, Cline, Kiro, Trae, LM Studio, Perplexity or Le Chat. Any client can register under any name, so the logo follows the redirect:
+
+- An https redirect is matched by its host alone.
+- A loopback or app-scheme redirect, which stays on the machine, is matched by its scheme or declared name.
+- A client that claims a known name but sends tokens to another host gets a warning on the page.
+
+The logos come from [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT). The marks belong to their owners.
+
 ## Prompts and progress
 
 `createUi` gives every CLI the same interactive surface, drawn with `@clack/prompts` on
