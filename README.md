@@ -331,6 +331,24 @@ The logos come from [lobe-icons](https://github.com/lobehub/lobe-icons) (MIT). T
 
 `@bunizao/cli-kit/site-icon` finds the icon the service's own website uses, so the tile shows the real OnTrack, Moodle or Ed logo instead of a letter. `siteIcon(origin)` reads the site's home page and takes its SVG icon, else its largest declared icon, else `/favicon.ico`. It returns a `data:` URI the CSP already allows, or `undefined` when none of those loads as an image. Results are cached per isolate; a failure is retried after five minutes.
 
+## Files in MCP results
+
+Hosted MCP clients show image blocks to the model but silently drop every other binary resource, so a PDF returned as a `resource` never reaches it. `@bunizao/cli-kit/file-content` turns a downloaded file into content the model can read. Like the consent page, it uses no Node or DOM APIs.
+
+```ts
+import { fileContent } from "@bunizao/cli-kit/file-content";
+
+const file = await fileContent({ name: "3.1P.pdf", mimeType: "application/pdf", bytes, uri }, { ai: env.AI });
+return { content: [{ type: "text", text: JSON.stringify(meta) }, ...file.content] };
+```
+
+- PNG, JPEG, GIF and WebP up to 5 MiB become an image block (`kind: "image"`).
+- PDF, Word, Excel, OpenDocument, Numbers, CSV, HTML and XML go through Workers AI [`toMarkdown`](https://developers.cloudflare.com/workers-ai/features/markdown-conversion/) when `ai` is given (`kind: "markdown"`). The conversion runs outside the Worker, so it fits the Free plan's 10 ms CPU limit; PDF metadata is turned off. Add `"ai": { "binding": "AI" }` to the Worker's config.
+- Other UTF-8 text and source files come back as their own text (`kind: "text"`).
+- Anything else, PowerPoint included, or a failed conversion becomes a note plus a `resource_link` to `uri` (`kind: "link"`).
+
+When the content type is empty or `application/octet-stream`, the file name's extension decides. Images are never sent to `toMarkdown`, which would run two AI models on them.
+
 ## Prompts and progress
 
 `createUi` gives every CLI the same interactive surface, drawn with `@clack/prompts` on
