@@ -19,6 +19,10 @@
     "./site-icon": {
       "types": "./dist/site-icon.d.ts",
       "import": "./dist/site-icon.js"
+    },
+    "./file-content": {
+      "types": "./dist/file-content.d.ts",
+      "import": "./dist/file-content.js"
     }
   },
   "files": [
